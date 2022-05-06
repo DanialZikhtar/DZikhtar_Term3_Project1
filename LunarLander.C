@@ -43,6 +43,20 @@ void drawGround(Drawer* DrPt)
     DrPt->xPos++;
 }
 
+void drawUpSlope(Drawer* DrPt)
+{
+    mvprintw(DrPt->yPos, DrPt->xPos, "/");
+    DrPt->yPos--;
+    DrPt->xPos++;
+}
+
+void drawDownSlope(Drawer* DrPt)
+{
+    DrPt->yPos++;
+    mvprintw(DrPt->yPos, DrPt->xPos, "\\");
+    DrPt->xPos++;
+}
+
 void DEBUG_PrintPos(Lander* pt)
 {
     printf("X:%f\nY:%f\n", pt->xPos, pt->yPos);
@@ -61,6 +75,8 @@ int main()
     D.yPos = LINES - 1;
     D.xPos = 0;
 
+    int userInput;
+
     refresh();
 
     while(1)
@@ -68,26 +84,41 @@ int main()
         raw();
         noecho();
 
-        int userInput = getch();
+        userInput = getch();
         if(userInput == 10)         //Enter Key
         {
-
-        }
-        else if(userInput == 32)    //Spacebar Key
-        {
-            drawGround(DrPt);
+            drawUpSlope(DrPt);
         }
         else if(userInput == 27)    //Escape key
         {
             endwin();
             break;
         }
+        else if(userInput == 32)    //Spacebar Key
+        {
+            
+        }
+        else if(userInput == 119)    //W Key
+        {
+            drawUpSlope(DrPt);
+        }
+        else if(userInput == 97)    //A Key
+        {
+            
+        }
+        else if(userInput == 115)    //S Key
+        {
+            drawDownSlope(DrPt);
+        }
+        else if(userInput == 100)    //D Key
+        {
+            drawGround(DrPt);
+        }
 
         refresh();
     }
 
-    printf("%d, %d\n", D.yPos, D.xPos);
-    printf("%d\n %d\n", LINES, COLS);
+    printf("%d\n", userInput);
 
     return 0;
 }
