@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <ncurses.h>
 
 const int limitX = 360;
 const int limitY = 360;
@@ -9,6 +10,12 @@ typedef struct Lander
     double xPos;
     double yPos;
 } Lander;
+
+typedef struct Drawer
+{
+    int xPos = 0;
+    int yPos = 0;
+} Drawer;
 
 void setXPos(Lander* pt, double X)
 {
@@ -30,6 +37,12 @@ void resetInstance(Lander* pt)
     return;
 }
 
+void drawGround(Drawer* DrPt)
+{
+    mvprintw(DrPt->yPos, DrPt->xPos, "_");
+    DrPt->xPos++;
+}
+
 void DEBUG_PrintPos(Lander* pt)
 {
     printf("X:%f\nY:%f\n", pt->xPos, pt->yPos);
@@ -37,16 +50,44 @@ void DEBUG_PrintPos(Lander* pt)
 
 int main()
 {
+    initscr();
+
     Lander Lunar;
     Lander* LunarPt = &Lunar;
     resetInstance(LunarPt);
 
-    for(int i = 0; i < 9; i++)
+    Drawer D;
+    Drawer* DrPt = &D;
+    D.yPos = LINES - 1;
+    D.xPos = 0;
+
+    refresh();
+
+    while(1)
     {
-        setXPos(LunarPt, Lunar.xPos + 5);
+        raw();
+        noecho();
+
+        int userInput = getch();
+        if(userInput == 10)         //Enter Key
+        {
+
+        }
+        else if(userInput == 32)    //Spacebar Key
+        {
+            drawGround(DrPt);
+        }
+        else if(userInput == 27)    //Escape key
+        {
+            endwin();
+            break;
+        }
+
+        refresh();
     }
 
-    DEBUG_PrintPos(LunarPt);
+    printf("%d, %d\n", D.yPos, D.xPos);
+    printf("%d\n %d\n", LINES, COLS);
 
     return 0;
 }
