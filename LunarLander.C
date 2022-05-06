@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <stdlib.h>
 #include <ncurses.h>
 
 const int limitX = 360;
 const int limitY = 360;
+
 
 typedef struct Lander
 {
@@ -62,8 +65,41 @@ void DEBUG_PrintPos(Lander* pt)
     printf("X:%f\nY:%f\n", pt->xPos, pt->yPos);
 }
 
+void drawLevel(Drawer* DrPt)
+{
+    int ranA = rand() % 18;
+    int ranB = rand() % 10 - 5;
+    while(DrPt->xPos < limitX)
+    {
+        if(ranA > 0)
+        {
+            drawGround(DrPt);
+            ranA--;
+        }
+        else
+        {
+            if(ranB > 0)
+            {
+                drawUpSlope(DrPt);
+                ranB--;
+            }
+            else if(ranB < 0)
+            {
+                drawDownSlope(DrPt);
+                ranB++;
+            }
+            else
+            {
+                ranA = rand() % 18;
+                ranB = rand() % 10 - 5;
+            }
+        }
+    }
+}
+
 int main()
 {
+    srand(time(NULL));
     initscr();
 
     Lander Lunar;
@@ -87,7 +123,7 @@ int main()
         userInput = getch();
         if(userInput == 10)         //Enter Key
         {
-            drawUpSlope(DrPt);
+            drawLevel(DrPt);
         }
         else if(userInput == 27)    //Escape key
         {
