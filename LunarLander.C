@@ -4,48 +4,53 @@
 #include <stdlib.h>
 #include <ncurses.h>
 
+//Arbitrary limit for stopping draw function
 const int limitX = 360;
 const int limitY = 360;
 
-
+//The player-controlled object.
+//Its just a drawer object that prints everytime its moved.
 typedef struct Lander
 {
-    double xPos;
-    double yPos;
+    int yPos = 0;
+    int xPos = 0;
 } Lander;
 
+void setLanderYPos(Lander* LnPt, int y)
+{
+    mvprintw(LnPt->yPos, LnPt->xPos, " ");
+    LnPt->yPos = y;
+    mvprintw(LnPt->yPos, LnPt->xPos, "*");
+}
+
+void setLanderXPos(Lander* LnPt, int x)
+{
+    mvprintw(LnPt->yPos, LnPt->xPos, " ");
+    LnPt->xPos = x;
+    mvprintw(LnPt->yPos, LnPt->xPos, "*");
+}
+
+//Object that keeps track of a cursor position used for printing characters
 typedef struct Drawer
 {
     int xPos = 0;
     int yPos = 0;
 } Drawer;
 
-void setXPos(Lander* pt, double X)
+void moveDrawPt(Drawer* DrPt, int y, int x)
 {
-    pt->xPos = X;
-    return;
+    DrPt->yPos = y;
+    DrPt->xPos = x;
 }
 
-void setYPos(Lander* pt, double Y)
-{
-    pt->yPos = Y;
-    return;
-}
-
-void resetInstance(Lander* pt)
-{
-    pt->xPos = 0;
-    pt->yPos = 0;
-
-    return;
-}
-
+//For use with level generation algorthm
 void drawGround(Drawer* DrPt)
 {
     mvprintw(DrPt->yPos, DrPt->xPos, "_");
     DrPt->xPos++;
 }
 
+//For use with level generation algorthm
 void drawUpSlope(Drawer* DrPt)
 {
     mvprintw(DrPt->yPos, DrPt->xPos, "/");
@@ -53,6 +58,7 @@ void drawUpSlope(Drawer* DrPt)
     DrPt->xPos++;
 }
 
+//For use with level generation algorthm
 void drawDownSlope(Drawer* DrPt)
 {
     DrPt->yPos++;
@@ -60,15 +66,11 @@ void drawDownSlope(Drawer* DrPt)
     DrPt->xPos++;
 }
 
-void DEBUG_PrintPos(Lander* pt)
-{
-    printf("X:%f\nY:%f\n", pt->xPos, pt->yPos);
-}
-
+//The level generation algorithm. Should only be called once per level.
 void drawLevel(Drawer* DrPt)
 {
-    int ranA = rand() % 18;
-    int ranB = rand() % 10 - 5;
+    int ranA = rand() % 18;         //Used to draw ground
+    int ranB = rand() % 10 - 5;     //Used to draw slopes
     while(DrPt->xPos < limitX)
     {
         if(ranA > 0)
@@ -78,20 +80,21 @@ void drawLevel(Drawer* DrPt)
         }
         else
         {
-            if(ranB > 0)
+            if(ranB > 0 && DrPt->yPos > 1)
             {
                 drawUpSlope(DrPt);
                 ranB--;
             }
-            else if(ranB < 0)
+            else if(ranB < 0 && DrPt->yPos < LINES - 1)
             {
                 drawDownSlope(DrPt);
+                ranB++;
                 ranB++;
             }
             else
             {
-                ranA = rand() % 18;
-                ranB = rand() % 10 - 5;
+                ranA = rand() % 15;
+                ranB = rand() % 24 - 12;
             }
         }
     }
@@ -104,7 +107,6 @@ int main()
 
     Lander Lunar;
     Lander* LunarPt = &Lunar;
-    resetInstance(LunarPt);
 
     Drawer D;
     Drawer* DrPt = &D;
@@ -115,11 +117,12 @@ int main()
 
     refresh();
 
+    raw();
+    noecho();
+    curs_set(0);
+
     while(1)
     {
-        raw();
-        noecho();
-
         userInput = getch();
         if(userInput == 10)         //Enter Key
         {
@@ -136,19 +139,19 @@ int main()
         }
         else if(userInput == 119)    //W Key
         {
-            drawUpSlope(DrPt);
+            setLanderYPos(LunarPt, LunarPt->yPos - 1);
         }
         else if(userInput == 97)    //A Key
         {
-            
+            setLanderXPos(LunarPt, LunarPt->xPos - 1);
         }
         else if(userInput == 115)    //S Key
         {
-            drawDownSlope(DrPt);
+            setLanderYPos(LunarPt, LunarPt->yPos + 1);
         }
         else if(userInput == 100)    //D Key
         {
-            drawGround(DrPt);
+            setLanderXPos(LunarPt, LunarPt->xPos + 1);
         }
 
         refresh();
