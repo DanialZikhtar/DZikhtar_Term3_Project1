@@ -18,16 +18,34 @@ typedef struct Lander
 
 void setLanderYPos(Lander* LnPt, int y)
 {
+    if(mvinch(y, LnPt->xPos) != 32)
+    {
+        printw("Your ship exploded and everyone died :(");
+
+        return;
+    }
+    
     mvprintw(LnPt->yPos, LnPt->xPos, " ");
     LnPt->yPos = y;
     mvprintw(LnPt->yPos, LnPt->xPos, "*");
+
+    return;
 }
 
 void setLanderXPos(Lander* LnPt, int x)
 {
+    if(mvinch(LnPt->yPos, x) != 32)
+    {
+        printw("Your ship exploded and everyone died :(");
+
+        return;
+    }
+
     mvprintw(LnPt->yPos, LnPt->xPos, " ");
     LnPt->xPos = x;
     mvprintw(LnPt->yPos, LnPt->xPos, "*");
+
+    return;
 }
 
 //Object that keeps track of a cursor position used for printing characters
