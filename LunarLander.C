@@ -35,6 +35,48 @@ void setLanderPos(Lander* LnPt, int y, int x)
     return;
 }
 
+void rotateLeft(Lander* LnPt)
+{
+    if(LnPt->landerChar == '>')
+    {
+        LnPt->landerChar = '^';
+        mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
+    }
+    else if(LnPt->landerChar == '^')
+    {
+        LnPt->landerChar = '<';
+        mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
+    }
+    else
+    {
+        //Rotation failed
+        return;
+    }
+
+    return;
+}
+
+void rotateRight(Lander* LnPt)
+{
+    if(LnPt->landerChar == '<')
+    {
+        LnPt->landerChar = '^';
+        mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
+    }
+    else if(LnPt->landerChar == '^')
+    {
+        LnPt->landerChar = '>';
+        mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
+    }
+    else
+    {
+        //Rotation failed
+        return;
+    }
+
+    return;
+}
+
 //Object that keeps track of a cursor position used for printing characters
 typedef struct Drawer
 {
@@ -153,7 +195,7 @@ int main()
         }
         else if(userInput == 97)    //A Key
         {
-            setLanderPos(LunarPt, LunarPt->yPos, LunarPt->xPos - 1);
+            rotateLeft(LunarPt);
         }
         else if(userInput == 115)    //S Key
         {
@@ -161,7 +203,7 @@ int main()
         }
         else if(userInput == 100)    //D Key
         {
-            setLanderPos(LunarPt, LunarPt->yPos, LunarPt->xPos + 1);
+            rotateRight(LunarPt);
         }
 
         if(tick % 12 == 0)
