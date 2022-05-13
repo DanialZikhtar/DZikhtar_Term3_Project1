@@ -27,7 +27,7 @@ void setLanderYPos(Lander* LnPt, int y)
     
     mvprintw(LnPt->yPos, LnPt->xPos, " ");
     LnPt->yPos = y;
-    mvprintw(LnPt->yPos, LnPt->xPos, "*");
+    mvprintw(LnPt->yPos, LnPt->xPos, "^");
 
     return;
 }
@@ -43,7 +43,7 @@ void setLanderXPos(Lander* LnPt, int x)
 
     mvprintw(LnPt->yPos, LnPt->xPos, " ");
     LnPt->xPos = x;
-    mvprintw(LnPt->yPos, LnPt->xPos, "*");
+    mvprintw(LnPt->yPos, LnPt->xPos, "^");
 
     return;
 }
@@ -131,12 +131,16 @@ int main()
     D.yPos = LINES - 1;
     D.xPos = 0;
 
+    drawLevel(DrPt);
+
     int userInput;
+    int tick = 0;
 
     refresh();
 
     raw();
     noecho();
+    halfdelay(1);
     curs_set(0);
 
     while(1)
@@ -144,7 +148,7 @@ int main()
         userInput = getch();
         if(userInput == 10)         //Enter Key
         {
-            drawLevel(DrPt);
+            
         }
         else if(userInput == 27)    //Escape key
         {
@@ -172,7 +176,13 @@ int main()
             setLanderXPos(LunarPt, LunarPt->xPos + 1);
         }
 
+        if(tick % 12 == 0)
+        {
+            setLanderYPos(LunarPt, LunarPt->yPos + 1);
+        }
+
         refresh();
+        tick++;
     }
 
     printf("%d\n", userInput);
