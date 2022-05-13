@@ -5,8 +5,8 @@
 #include <ncurses.h>
 
 //Arbitrary limit for stopping draw function
-const int limitX = 360;
-const int limitY = 360;
+const int limitX = 720;
+const int limitY = 720;
 
 //The player-controlled object.
 //Its just a drawer object that prints everytime its moved.
@@ -14,11 +14,13 @@ typedef struct Lander
 {
     int yPos = 0;
     int xPos = 0;
+    char landerChar = '^';
 } Lander;
 
-void setLanderYPos(Lander* LnPt, int y)
+void setLanderPos(Lander* LnPt, int y, int x)
 {
-    if(mvinch(y, LnPt->xPos) != 32)
+    //Check if target destination is empty
+    if(mvinch(y, x) != 32)
     {
         printw("Your ship exploded and everyone died :(");
 
@@ -27,23 +29,8 @@ void setLanderYPos(Lander* LnPt, int y)
     
     mvprintw(LnPt->yPos, LnPt->xPos, " ");
     LnPt->yPos = y;
-    mvprintw(LnPt->yPos, LnPt->xPos, "^");
-
-    return;
-}
-
-void setLanderXPos(Lander* LnPt, int x)
-{
-    if(mvinch(LnPt->yPos, x) != 32)
-    {
-        printw("Your ship exploded and everyone died :(");
-
-        return;
-    }
-
-    mvprintw(LnPt->yPos, LnPt->xPos, " ");
     LnPt->xPos = x;
-    mvprintw(LnPt->yPos, LnPt->xPos, "^");
+    mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
 
     return;
 }
@@ -85,6 +72,7 @@ void drawDownSlope(Drawer* DrPt)
 }
 
 //The level generation algorithm. Should only be called once per level.
+//Drawer should point to bottom left of intended screen space before calling
 void drawLevel(Drawer* DrPt)
 {
     int ranA = rand() % 18;         //Used to draw ground
@@ -161,24 +149,24 @@ int main()
         }
         else if(userInput == 119)    //W Key
         {
-            setLanderYPos(LunarPt, LunarPt->yPos - 1);
+            setLanderPos(LunarPt, LunarPt->yPos - 1, LunarPt->xPos);
         }
         else if(userInput == 97)    //A Key
         {
-            setLanderXPos(LunarPt, LunarPt->xPos - 1);
+            setLanderPos(LunarPt, LunarPt->yPos, LunarPt->xPos - 1);
         }
         else if(userInput == 115)    //S Key
         {
-            setLanderYPos(LunarPt, LunarPt->yPos + 1);
+            setLanderPos(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
         }
         else if(userInput == 100)    //D Key
         {
-            setLanderXPos(LunarPt, LunarPt->xPos + 1);
+            setLanderPos(LunarPt, LunarPt->yPos, LunarPt->xPos + 1);
         }
 
         if(tick % 12 == 0)
         {
-            setLanderYPos(LunarPt, LunarPt->yPos + 1);
+            setLanderPos(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
         }
 
         refresh();
