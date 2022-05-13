@@ -8,12 +8,19 @@
 const int limitX = 720;
 const int limitY = 720;
 
+
+
+
+
+
+
 //The player-controlled object.
 //Its just a drawer object that prints everytime its moved.
 typedef struct Lander
 {
     int yPos = 0;
     int xPos = 0;
+    int fuel = 500;
     char landerChar = '^';
 } Lander;
 
@@ -76,6 +83,11 @@ void rotateRight(Lander* LnPt)
 
     return;
 }
+
+
+
+
+
 
 //Object that keeps track of a cursor position used for printing characters
 typedef struct Drawer
@@ -148,6 +160,12 @@ void drawLevel(Drawer* DrPt)
     }
 }
 
+
+
+
+
+
+
 int main()
 {
     srand(time(NULL));
@@ -175,6 +193,8 @@ int main()
 
     while(1)
     {
+        mvprintw(0, COLS - 20, "Fuel: %d", LunarPt->fuel);
+        
         userInput = getch();
         if(userInput == 10)         //Enter Key
         {
@@ -191,7 +211,7 @@ int main()
         }
         else if(userInput == 119)    //W Key
         {
-            setLanderPos(LunarPt, LunarPt->yPos - 1, LunarPt->xPos);
+            LunarPt->fuel--;
         }
         else if(userInput == 97)    //A Key
         {
