@@ -22,8 +22,10 @@ typedef struct Lander
 {
     int yPos = 0;
     int xPos = 0;
-    double ySpd = 0;
-    double xSpd = 0;
+    double yAccel = 0;
+    double xAccel = 0;
+    double yMover = 0;
+    double xMover = 0;
     int angleOffset = 0;
 
     int fuel = 500;
@@ -94,13 +96,16 @@ void rotateRight(Lander* LnPt)
 
 void thrust(Lander* LnPt, double power)
 {
-    LnPt->ySpd += power*-cos(toRad(LnPt->angleOffset));
-    LnPt->xSpd += power*sin(toRad(LnPt->angleOffset));
+    LnPt->yAccel += power*-cos(toRad(LnPt->angleOffset));
+    LnPt->xAccel += power*sin(toRad(LnPt->angleOffset));
 }
 
 //Redraws ship ASCII based on current rotation (and other parameters?)
 void updateLander(Lander* LnPt)
 {
+    LnPt->yMover += LnPt->yAccel;
+    LnPt->xMover += LnPt->xAccel;
+    
     //Rotation checks
     if(LnPt->angleOffset > 60)
     {
@@ -119,9 +124,26 @@ void updateLander(Lander* LnPt)
     }
 
     //Velocity checks
-    if(LnPt->ySpd != 0 || LnPt->xSpd != 0)
+    if(LnPt->yMover > 1)
     {
-        setLanderPos(LnPt, LnPt->yPos + round(LnPt->ySpd), LnPt->xPos + round(LnPt->xSpd));
+        setLanderPos(LnPt, LnPt->yPos + 1, LnPt->xPos);
+        LnPt->yMover--;
+    }
+    else if(LnPt->yMover < -1)
+    {
+        setLanderPos(LnPt, LnPt->yPos - 1, LnPt->xPos);
+        LnPt->yMover++;
+    }
+    
+    if(LnPt->xMover > 1)
+    {
+        setLanderPos(LnPt, LnPt->yPos, LnPt->xPos + 1);
+        LnPt->xMover--;
+    }
+    else if(LnPt->xMover < -1)
+    {
+        setLanderPos(LnPt, LnPt->yPos, LnPt->xPos - 1);
+        LnPt->xMover++;
     }
 }
 
@@ -216,7 +238,7 @@ int main()
     Lander* LunarPt = &Lunar;
     Lunar.yPos = 0;
     Lunar.xPos = 5;
-    Lunar.fuel = 120;
+    Lunar.fuel = 500;
     Lunar.angleOffset = 0;
 
     Drawer D;
@@ -247,14 +269,14 @@ int main()
         mvprintw(0, COLS - 15, "Fuel: %d", LunarPt->fuel);
         mvprintw(1, COLS - 15, "Angle: %d", LunarPt->angleOffset);
 
-        //DEBUG: Show speed on UI
-        for(int i = COLS - 15; i<COLS; i++)
+        //DEBUG: Show speed & mover component on UI
+        for(int i = COLS - 30; i<COLS; i++)
         {
             mvprintw(2, i, " ");
             mvprintw(3, i, " ");
         }
-        mvprintw(2, COLS - 15, "ySpd: %0.3f", LunarPt->ySpd);
-        mvprintw(3, COLS - 15, "xSpd: %0.3f", LunarPt->xSpd);
+        mvprintw(2, COLS - 30, "yAccel: %0.3f yMover: %0.3f", LunarPt->yAccel, LunarPt->yMover);
+        mvprintw(3, COLS - 30, "xAccel: %0.3f xMover: %0.3f", LunarPt->xAccel, LunarPt->xMover);
 
         //Button Presses Codes
         userInput = getch();
@@ -275,7 +297,7 @@ int main()
         {
             if(LunarPt->fuel > 0)
             {
-                thrust(LunarPt, 0.5);
+                thrust(LunarPt, 0.033);
                 LunarPt->fuel--;
             }
         }
@@ -296,13 +318,13 @@ int main()
         if(tick % 15240 == 0)
         {
             // setLanderPos(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
-            if(LunarPt->ySpd < 2)
+            if(LunarPt->yAccel < 2)
             {
-                LunarPt->ySpd += 0.03125;
+                LunarPt->yAccel += 0.015625;
             }
         }
 
-        if(tick % 45720 == 0)
+        if(tick % 30480 == 0)
         {
             updateLander(LunarPt);
         }
