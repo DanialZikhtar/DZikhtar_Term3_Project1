@@ -92,10 +92,10 @@ void rotateRight(Lander* LnPt)
     return;
 }
 
-void thrust(Lander* LnPt, int power)
+void thrust(Lander* LnPt, double power)
 {
-    LnPt->ySpd += -cos(toRad(LnPt->angleOffset));
-    LnPt->xSpd += sin(toRad(LnPt->angleOffset));
+    LnPt->ySpd += power*-cos(toRad(LnPt->angleOffset));
+    LnPt->xSpd += power*sin(toRad(LnPt->angleOffset));
 }
 
 //Redraws ship ASCII based on current rotation (and other parameters?)
@@ -233,7 +233,7 @@ int main()
 
     raw();
     noecho();
-    halfdelay(1);
+    nodelay(stdscr, true);
     curs_set(0);
 
     while(1)
@@ -253,8 +253,8 @@ int main()
             mvprintw(2, i, " ");
             mvprintw(3, i, " ");
         }
-        mvprintw(2, COLS - 15, "ySpd: %f", LunarPt->ySpd);
-        mvprintw(3, COLS - 15, "ySpd: %f", LunarPt->ySpd);
+        mvprintw(2, COLS - 15, "ySpd: %0.3f", LunarPt->ySpd);
+        mvprintw(3, COLS - 15, "xSpd: %0.3f", LunarPt->xSpd);
 
         //Button Presses Codes
         userInput = getch();
@@ -275,7 +275,7 @@ int main()
         {
             if(LunarPt->fuel > 0)
             {
-                thrust(LunarPt, 0.05);
+                thrust(LunarPt, 0.5);
                 LunarPt->fuel--;
             }
         }
@@ -293,17 +293,23 @@ int main()
         }
 
         //Every-loop codes
-        if(tick % 12 == 0)
+        if(tick % 15240 == 0)
         {
-            setLanderPos(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
+            // setLanderPos(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
+            if(LunarPt->ySpd < 2)
+            {
+                LunarPt->ySpd += 0.03125;
+            }
         }
 
-        updateLander(LunarPt);
+        if(tick % 45720 == 0)
+        {
+            updateLander(LunarPt);
+        }
+
         refresh();
         tick++;
     }
-
-    printf("%d\n", userInput);
 
     return 0;
 }
