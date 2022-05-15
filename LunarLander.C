@@ -4,12 +4,11 @@
 #include <stdlib.h>
 #include <ncurses.h>
 
+
+
 //Arbitrary limit for stopping draw function
 const int limitX = 720;
 const int limitY = 720;
-
-
-
 
 
 
@@ -21,20 +20,35 @@ typedef struct Lander
     int yPos = 0;
     int xPos = 0;
     int fuel = 500;
+    int rotOffset = 0;
     char landerChar = '^';
 } Lander;
+
+//Checks if position (y,x) contains a character
+bool containChar(int y, int x)
+{
+    //Empty-case (spacebar or 'allowed' characters)
+    if(mvinch(y,x) == 32)
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
 
 void setLanderPos(Lander* LnPt, int y, int x)
 {
     //Check if target destination is empty
-    if(mvinch(y, x) != 32)
+    if(containChar(y,x) == true)
     {
         printw("Your ship exploded and everyone died :(");
 
         return;
     }
     
-    mvprintw(LnPt->yPos, LnPt->xPos, " ");
+    mvaddch(LnPt->yPos, LnPt->xPos, ' ');
     LnPt->yPos = y;
     LnPt->xPos = x;
     mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
@@ -173,6 +187,7 @@ int main()
 
     Lander Lunar;
     Lander* LunarPt = &Lunar;
+    Lunar.fuel = 500;
 
     Drawer D;
     Drawer* DrPt = &D;
