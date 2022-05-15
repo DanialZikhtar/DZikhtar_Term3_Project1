@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 #include <stdlib.h>
 #include <ncurses.h>
 
@@ -10,17 +11,24 @@
 const int limitX = 720;
 const int limitY = 720;
 
-
+double toRad(double theta)
+{
+    return (theta/180)*3.1415926535;
+}
 
 
 //The player-controlled object.
-//Its just a drawer object that prints everytime its moved.
 typedef struct Lander
 {
     int yPos = 0;
     int xPos = 0;
-    int fuel = 500;
+    double ySpd = 0;
+    double xSpd = 0;
     int angleOffset = 0;
+
+    int fuel = 500;
+    int thrustPower = 1;
+
     char landerChar = '^';
 } Lander;
 
@@ -38,6 +46,7 @@ bool isEmpty(int y, int x)
     }
 }
 
+//Sets (y,x) of Lander to given (y,x) and redraw it there.
 void setLanderPos(Lander* LnPt, int y, int x)
 {
     //Check if target destination is empty
@@ -56,11 +65,12 @@ void setLanderPos(Lander* LnPt, int y, int x)
     return;
 }
 
+//Changes the angle offset
 void rotateLeft(Lander* LnPt)
 {
     if(LnPt->angleOffset > -90)
     {
-        LnPt->angleOffset = LnPt->angleOffset - 15;
+        LnPt->angleOffset -= 15;
         return;
     }
 
@@ -71,10 +81,16 @@ void rotateRight(Lander* LnPt)
 {
     if(LnPt->angleOffset < 90)
     {
-        LnPt->angleOffset = LnPt->angleOffset + 15;
+        LnPt->angleOffset += 15;
     }
 
     return;
+}
+
+void thrust(Lander* LnPt, int power)
+{
+    LnPt->ySpd += sin(toRad(LnPt->angleOffset));
+    LnPt->xSpd += cos(toRad(LnPt->angleOffset));
 }
 
 //Redraws ship ASCII based on current rotation (and other parameters?)
@@ -96,6 +112,35 @@ void updateLander(Lander* LnPt)
         LnPt->landerChar = '^';
         mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
     }
+
+    // //Velocity checks
+    // if(LnPt->ySpd != 0 || LnPt->xSpd != 0)
+    // {
+    //     setLanderPos(LnPt, LnPt->yPos + LnPt->ySpd, LnPt->xPos);
+
+    //     if(LnPt->ySpd > 0)
+    //     {
+    //         LnPt->ySpd--;
+    //     }
+    //     else if(LnPt->ySpd < 0)
+    //     {
+    //         LnPt->ySpd++;
+    //     }
+    // }
+
+    // if(LnPt->xSpd != 0)
+    // {
+    //     setLanderPos(LnPt, LnPt->yPos, LnPt->xPos + LnPt->xSpd);
+
+    //     if(LnPt->xSpd > 0)
+    //     {
+    //         LnPt->xSpd--;
+    //     }
+    //     else if(LnPt->xSpd < 0)
+    //     {
+    //         LnPt->xSpd++;
+    //     }
+    // }
 }
 
 
@@ -140,7 +185,7 @@ void drawDownSlope(Drawer* DrPt)
 }
 
 //The level generation algorithm. Should only be called once per level.
-//Drawer should point to bottom left of intended screen space before calling
+//Drawer should point to bottom left of intended screen space before calling e.g (LINES - 1, 0)
 void drawLevel(Drawer* DrPt)
 {
     int ranA = rand() % 18;         //Used to draw ground
@@ -187,8 +232,10 @@ int main()
 
     Lander Lunar;
     Lander* LunarPt = &Lunar;
+    Lunar.yPos = 0;
+    Lunar.xPos = 5;
     Lunar.fuel = 120;
-    Lunar.angleOffset = 000;
+    Lunar.angleOffset = 0;
 
     Drawer D;
     Drawer* DrPt = &D;
@@ -255,6 +302,7 @@ int main()
             setLanderPos(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
         }
 
+        //Every-loop codes
         updateLander(LunarPt);
         refresh();
         tick++;
