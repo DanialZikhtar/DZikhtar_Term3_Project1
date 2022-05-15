@@ -20,28 +20,28 @@ typedef struct Lander
     int yPos = 0;
     int xPos = 0;
     int fuel = 500;
-    int rotOffset = 0;
+    int angleOffset = 0;
     char landerChar = '^';
 } Lander;
 
-//Checks if position (y,x) contains a character
-bool containChar(int y, int x)
+//Checks if position (y,x) is empty
+bool isEmpty(int y, int x)
 {
     //Empty-case (spacebar or 'allowed' characters)
     if(mvinch(y,x) == 32)
     {
-        return false;
+        return true;
     }
     else
     {
-        return true;
+        return false;
     }
 }
 
 void setLanderPos(Lander* LnPt, int y, int x)
 {
     //Check if target destination is empty
-    if(containChar(y,x) == true)
+    if(isEmpty(y,x) == false)
     {
         printw("Your ship exploded and everyone died :(");
 
@@ -58,19 +58,9 @@ void setLanderPos(Lander* LnPt, int y, int x)
 
 void rotateLeft(Lander* LnPt)
 {
-    if(LnPt->landerChar == '>')
+    if(LnPt->angleOffset > -90)
     {
-        LnPt->landerChar = '^';
-        mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
-    }
-    else if(LnPt->landerChar == '^')
-    {
-        LnPt->landerChar = '<';
-        mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
-    }
-    else
-    {
-        //Rotation failed
+        LnPt->angleOffset = LnPt->angleOffset - 15;
         return;
     }
 
@@ -79,23 +69,33 @@ void rotateLeft(Lander* LnPt)
 
 void rotateRight(Lander* LnPt)
 {
-    if(LnPt->landerChar == '<')
+    if(LnPt->angleOffset < 90)
     {
-        LnPt->landerChar = '^';
-        mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
+        LnPt->angleOffset = LnPt->angleOffset + 15;
     }
-    else if(LnPt->landerChar == '^')
+
+    return;
+}
+
+//Redraws ship ASCII based on current rotation (and other parameters?)
+void updateLander(Lander* LnPt)
+{
+    //Rotation checks
+    if(LnPt->angleOffset > 60)
     {
         LnPt->landerChar = '>';
         mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
     }
+    else if(LnPt->angleOffset < -60)
+    {
+        LnPt->landerChar = '<';
+        mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
+    }
     else
     {
-        //Rotation failed
-        return;
+        LnPt->landerChar = '^';
+        mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
     }
-
-    return;
 }
 
 
@@ -154,7 +154,7 @@ void drawLevel(Drawer* DrPt)
         }
         else
         {
-            if(ranB > 0 && DrPt->yPos > 1)
+            if(ranB > 0 && DrPt->yPos > 5)
             {
                 drawUpSlope(DrPt);
                 ranB--;
@@ -187,7 +187,8 @@ int main()
 
     Lander Lunar;
     Lander* LunarPt = &Lunar;
-    Lunar.fuel = 500;
+    Lunar.fuel = 120;
+    Lunar.angleOffset = 000;
 
     Drawer D;
     Drawer* DrPt = &D;
@@ -208,8 +209,16 @@ int main()
 
     while(1)
     {
-        mvprintw(0, COLS - 20, "Fuel: %d", LunarPt->fuel);
-        
+        //User Interface Codes
+        for(int i = COLS - 15; i<COLS; i++)
+        {
+            mvprintw(0, i, " ");
+            mvprintw(1, i, " ");
+        }
+        mvprintw(0, COLS - 15, "Fuel: %d", LunarPt->fuel);
+        mvprintw(1, COLS - 15, "Angle: %d", LunarPt->angleOffset);
+
+        //Button Presses Codes
         userInput = getch();
         if(userInput == 10)         //Enter Key
         {
@@ -246,6 +255,7 @@ int main()
             setLanderPos(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
         }
 
+        updateLander(LunarPt);
         refresh();
         tick++;
     }
