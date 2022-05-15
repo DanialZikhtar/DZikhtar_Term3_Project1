@@ -36,7 +36,12 @@ typedef struct Lander
 bool isEmpty(int y, int x)
 {
     //Empty-case (spacebar or 'allowed' characters)
-    if(mvinch(y,x) == 32)
+    //Current exceptions
+    // ' '
+    // '<'
+    // '^'
+    // '>'
+    if(mvinch(y,x) == 32 || mvinch(y,x) == 60 || mvinch(y,x) == 62 || mvinch(y,x) == 94)
     {
         return true;
     }
@@ -49,13 +54,13 @@ bool isEmpty(int y, int x)
 //Sets (y,x) of Lander to given (y,x) and redraw it there.
 void setLanderPos(Lander* LnPt, int y, int x)
 {
-    //Check if target destination is empty
-    if(isEmpty(y,x) == false)
-    {
-        printw("Your ship exploded and everyone died :(");
+    //Check if target destination (and the path inbetween) is empty
+        if(isEmpty(y,x) == false)
+        {
+            printw("Your ship exploded and everyone died :(");
 
-        return;
-    }
+            return;
+        }
     
     mvaddch(LnPt->yPos, LnPt->xPos, ' ');
     LnPt->yPos = y;
@@ -89,8 +94,8 @@ void rotateRight(Lander* LnPt)
 
 void thrust(Lander* LnPt, int power)
 {
-    LnPt->ySpd += sin(toRad(LnPt->angleOffset));
-    LnPt->xSpd += cos(toRad(LnPt->angleOffset));
+    LnPt->ySpd += -cos(toRad(LnPt->angleOffset));
+    LnPt->xSpd += sin(toRad(LnPt->angleOffset));
 }
 
 //Redraws ship ASCII based on current rotation (and other parameters?)
@@ -113,34 +118,11 @@ void updateLander(Lander* LnPt)
         mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
     }
 
-    // //Velocity checks
-    // if(LnPt->ySpd != 0 || LnPt->xSpd != 0)
-    // {
-    //     setLanderPos(LnPt, LnPt->yPos + LnPt->ySpd, LnPt->xPos);
-
-    //     if(LnPt->ySpd > 0)
-    //     {
-    //         LnPt->ySpd--;
-    //     }
-    //     else if(LnPt->ySpd < 0)
-    //     {
-    //         LnPt->ySpd++;
-    //     }
-    // }
-
-    // if(LnPt->xSpd != 0)
-    // {
-    //     setLanderPos(LnPt, LnPt->yPos, LnPt->xPos + LnPt->xSpd);
-
-    //     if(LnPt->xSpd > 0)
-    //     {
-    //         LnPt->xSpd--;
-    //     }
-    //     else if(LnPt->xSpd < 0)
-    //     {
-    //         LnPt->xSpd++;
-    //     }
-    // }
+    //Velocity checks
+    if(LnPt->ySpd != 0 || LnPt->xSpd != 0)
+    {
+        setLanderPos(LnPt, LnPt->yPos + round(LnPt->ySpd), LnPt->xPos + round(LnPt->xSpd));
+    }
 }
 
 
@@ -265,6 +247,15 @@ int main()
         mvprintw(0, COLS - 15, "Fuel: %d", LunarPt->fuel);
         mvprintw(1, COLS - 15, "Angle: %d", LunarPt->angleOffset);
 
+        //DEBUG: Show speed on UI
+        for(int i = COLS - 15; i<COLS; i++)
+        {
+            mvprintw(2, i, " ");
+            mvprintw(3, i, " ");
+        }
+        mvprintw(2, COLS - 15, "ySpd: %f", LunarPt->ySpd);
+        mvprintw(3, COLS - 15, "ySpd: %f", LunarPt->ySpd);
+
         //Button Presses Codes
         userInput = getch();
         if(userInput == 10)         //Enter Key
@@ -282,7 +273,11 @@ int main()
         }
         else if(userInput == 119)    //W Key
         {
-            LunarPt->fuel--;
+            if(LunarPt->fuel > 0)
+            {
+                thrust(LunarPt, 0.05);
+                LunarPt->fuel--;
+            }
         }
         else if(userInput == 97)    //A Key
         {
@@ -297,12 +292,12 @@ int main()
             rotateRight(LunarPt);
         }
 
+        //Every-loop codes
         if(tick % 12 == 0)
         {
             setLanderPos(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
         }
 
-        //Every-loop codes
         updateLander(LunarPt);
         refresh();
         tick++;
