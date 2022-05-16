@@ -28,8 +28,8 @@ typedef struct Lander
     double xMover = 0;
     int angleOffset = 0;
 
-    int fuel = 500;
-    int thrustPower = 1;
+    int fuel = 1500;
+    double thrustPower = 0.01525;
 
     char landerChar = '^';
 } Lander;
@@ -96,8 +96,20 @@ void rotateRight(Lander* LnPt)
 
 void thrust(Lander* LnPt, double power)
 {
-    LnPt->yAccel += power*-cos(toRad(LnPt->angleOffset));
+    LnPt->yAccel += 0.9*power*-cos(toRad(LnPt->angleOffset));
     LnPt->xAccel += power*sin(toRad(LnPt->angleOffset));
+
+    LnPt->fuel--;
+}
+
+void mover(Lander* LnPt)
+{
+    int yMove = (int) floor(LnPt->yMover);
+    int xMove = (int) floor(LnPt->xMover);
+    
+    setLanderPos(LnPt, LnPt->yPos + yMove, LnPt->xPos + xMove);
+    LnPt->yMover -= yMove;
+    LnPt->xMover -= xMove;
 }
 
 //Redraws ship ASCII based on current rotation (and other parameters?)
@@ -105,6 +117,16 @@ void updateLander(Lander* LnPt)
 {
     LnPt->yMover += LnPt->yAccel;
     LnPt->xMover += LnPt->xAccel;
+
+    //Smoothes out abrupt change in direction
+    if(LnPt->yAccel < 0.01 && LnPt->yAccel > -0.01)
+    {
+        LnPt->yMover = 0.92;
+    }
+    if(LnPt->xAccel < 0.01 && LnPt->xAccel > -0.01)
+    {
+        LnPt->xMover = 0.92;
+    }
     
     //Rotation checks
     if(LnPt->angleOffset > 60)
@@ -124,27 +146,7 @@ void updateLander(Lander* LnPt)
     }
 
     //Velocity checks
-    if(LnPt->yMover > 1)
-    {
-        setLanderPos(LnPt, LnPt->yPos + 1, LnPt->xPos);
-        LnPt->yMover--;
-    }
-    else if(LnPt->yMover < -1)
-    {
-        setLanderPos(LnPt, LnPt->yPos - 1, LnPt->xPos);
-        LnPt->yMover++;
-    }
-    
-    if(LnPt->xMover > 1)
-    {
-        setLanderPos(LnPt, LnPt->yPos, LnPt->xPos + 1);
-        LnPt->xMover--;
-    }
-    else if(LnPt->xMover < -1)
-    {
-        setLanderPos(LnPt, LnPt->yPos, LnPt->xPos - 1);
-        LnPt->xMover++;
-    }
+    mover(LnPt);
 }
 
 
@@ -297,8 +299,7 @@ int main()
         {
             if(LunarPt->fuel > 0)
             {
-                thrust(LunarPt, 0.033);
-                LunarPt->fuel--;
+                thrust(LunarPt, LunarPt->thrustPower);
             }
         }
         else if(userInput == 97)    //A Key
@@ -315,18 +316,14 @@ int main()
         }
 
         //Every-loop codes
-        if(tick % 15240 == 0)
-        {
-            // setLanderPos(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
-            if(LunarPt->yAccel < 2)
-            {
-                LunarPt->yAccel += 0.015625;
-            }
-        }
-
         if(tick % 30480 == 0)
         {
             updateLander(LunarPt);
+
+            if(LunarPt->yAccel < 3)
+            {
+                LunarPt->yAccel += 0.0485;
+            }
         }
 
         refresh();
