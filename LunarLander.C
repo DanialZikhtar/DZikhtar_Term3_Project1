@@ -53,6 +53,8 @@ bool isEmpty(int y, int x)
     }
 }
 
+//Checks if moving lander from its current (y,x) to the provided (y,x) will result in collision
+
 //Sets (y,x) of Lander to given (y,x) and redraw it there.
 void setLanderPos(Lander* LnPt, int y, int x)
 {
@@ -73,30 +75,25 @@ void setLanderPos(Lander* LnPt, int y, int x)
 }
 
 //Changes the angle offset
-void rotateLeft(Lander* LnPt)
+void rotateLander(Lander* LnPt, int angle)
 {
-    if(LnPt->angleOffset > -90)
+    int revertValue = LnPt->angleOffset;
+    
+    LnPt->angleOffset += angle;
+
+    if(LnPt->angleOffset < -90 || LnPt->angleOffset > 90)
     {
-        LnPt->angleOffset -= 15;
-        return;
+        LnPt->angleOffset = revertValue;
     }
+
 
     return;
 }
 
-void rotateRight(Lander* LnPt)
-{
-    if(LnPt->angleOffset < 90)
-    {
-        LnPt->angleOffset += 15;
-    }
-
-    return;
-}
 
 void thrust(Lander* LnPt, double power)
 {
-    LnPt->yAccel += 0.9*power*-cos(toRad(LnPt->angleOffset));
+    LnPt->yAccel += 1.2*power*-cos(toRad(LnPt->angleOffset));
     LnPt->xAccel += power*sin(toRad(LnPt->angleOffset));
 
     LnPt->fuel--;
@@ -148,6 +145,7 @@ void updateLander(Lander* LnPt)
     //Velocity checks
     mover(LnPt);
 }
+
 
 
 
@@ -304,7 +302,7 @@ int main()
         }
         else if(userInput == 97)    //A Key
         {
-            rotateLeft(LunarPt);
+            rotateLander(LunarPt, -15);
         }
         else if(userInput == 115)    //S Key
         {
@@ -312,7 +310,7 @@ int main()
         }
         else if(userInput == 100)    //D Key
         {
-            rotateRight(LunarPt);
+            rotateLander(LunarPt, 15);
         }
 
         //Every-loop codes
