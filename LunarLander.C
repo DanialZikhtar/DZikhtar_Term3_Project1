@@ -7,32 +7,18 @@
 
 
 
-//Arbitrary limit for stopping draw function
+//Arbitrary limit for screen space
 const int limitX = 720;
 const int limitY = 720;
+//Max size of lander art when considering the minimum size of a n*n matrix required to draw it
+const int MaxLanderDimension = 10;
+//Gravity acceleration
+const int gravAccel = 0.0485;
 
 double toRad(double theta)
 {
     return (theta/180)*3.1415926535;
 }
-
-
-//The player-controlled object.
-typedef struct Lander
-{
-    int yPos = 0;
-    int xPos = 0;
-    double yAccel = 0;
-    double xAccel = 0;
-    double yMover = 0;
-    double xMover = 0;
-    int angleOffset = 0;
-
-    int fuel = 1500;
-    double thrustPower = 0.01525;
-
-    char landerChar = '^';
-} Lander;
 
 //Checks if position (y,x) is empty
 bool isEmpty(int y, int x)
@@ -52,6 +38,24 @@ bool isEmpty(int y, int x)
         return false;
     }
 }
+
+//The player-controlled object.
+typedef struct Lander
+{
+    int yPos = 0;
+    int xPos = 0;
+    double yAccel = 0;
+    double xAccel = 0;
+    double yMover = 0;
+    double xMover = 0;
+    int angleOffset = 0;
+
+    int fuel = 1500;
+    double thrustPower = 0.01525;
+
+    char landerChar = '^';
+    char landerArt[MaxLanderDimension][1];      //First dimension stores location, second is the character associated with the location
+} Lander;
 
 //Checks if moving lander from its current (y,x) to the provided (y,x) will result in collision
 
@@ -74,6 +78,28 @@ void setLanderPos(Lander* LnPt, int y, int x)
     return;
 }
 
+void drawLander(Lander* LnPt, char ASCIIArt[MaxLanderDimension][1] , int y, int x)
+{
+    //POSITION TO DRAW AT
+    // (y,x) -> 'O'
+    // (y+1,x-1) -> '/'
+    // (y+1,x+1) -> '\'         O
+    // (y+1,x-2) -> '_'       _/ \_
+    // (y+1,x+2) -> '_'
+
+
+}
+
+//Checks if moving LnPt from its current position to (y,x) will result in collision
+bool willCollide(Lander* LnPt, int y, int x)
+{
+    if(isEmpty(y,x) == false)
+    {
+        return true;
+    }
+    else return false;
+}
+
 //Changes the angle offset
 void rotateLander(Lander* LnPt, int angle)
 {
@@ -85,7 +111,6 @@ void rotateLander(Lander* LnPt, int angle)
     {
         LnPt->angleOffset = revertValue;
     }
-
 
     return;
 }
@@ -320,7 +345,7 @@ int main()
 
             if(LunarPt->yAccel < 3)
             {
-                LunarPt->yAccel += 0.0485;
+                LunarPt->yAccel += gravAccel;
             }
         }
 
