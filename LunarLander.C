@@ -10,6 +10,7 @@ const int screenLimitX = 720;
 const int MaxLanderYDimension = 3;  //Max size of lander art. Has to be a square that encloses all characters
 const int MaxLanderXDimension = 5;
 const int rotationAmount = 45;
+const int explosionSize = 13;
 const double gravAccel = 0.0320;        //Constant downward force
 const double airResistance = 0.005;     //Friction
 
@@ -177,7 +178,7 @@ void drawLevel(Drawer* DrPt)
 }
 
 //Draws an explosion at (y,x) according to specified dimensions
-void DrawExplosion(int y, int x, int sizeY, int sizeX)
+void DrawExplosion(int y, int x, int size)
 {
     Drawer DrawHelper;
     DrawHelper.yPos = y - 1;
@@ -192,20 +193,20 @@ void DrawExplosion(int y, int x, int sizeY, int sizeX)
         }
     }
 
-    DrawHelper.yPos = (int) y - sizeY/2;
-    DrawHelper.xPos = (int) x - sizeX/2;
+    DrawHelper.yPos = (int) y - size/2;
+    DrawHelper.xPos = (int) x - size/2;
     int random;
     int distToCentre;
 
     //Second Pass
-    for(int i = 0; i<sizeY; i++)
+    for(int i = 0; i<size; i++)
     {
-        for(int j = 0; j<sizeX; j++)
+        for(int j = 0; j<size; j++)
         {          
             distToCentre = (int) sqrt(pow(((DrawHelper.yPos + i) - y), 2) + pow(((DrawHelper.xPos + j) - x), 2));
             
-            random = rand() % 10 + distToCentre;
-            if(random <= 4)
+            random = rand() % 11 + distToCentre;
+            if(random <= 0.55*size)
             {
                 mvaddch(DrawHelper.yPos + i, DrawHelper.xPos + j, '*');
             }
@@ -424,8 +425,6 @@ int main()
     nodelay(stdscr, true);
     curs_set(0);
 
-    mvaddch(6, 24, 'A');
-
     while(1)
     {
         //User Interface Codes
@@ -459,7 +458,7 @@ int main()
         }
         else if(userInput == 32)    //Spacebar Key
         {
-            DrawExplosion(6, 24, 10, 10);
+            DrawExplosion(LunarPt->yPos, LunarPt->xPos, explosionSize);
         }
         else if(userInput == 119)    //W Key
         {
