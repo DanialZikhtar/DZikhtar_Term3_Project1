@@ -5,15 +5,65 @@
 #include <stdlib.h>
 #include <ncurses.h>
 
+const int ScreenLimitY = 720;   //Arbitrary limit for screen space
+const int screenLimitX = 720;
+const int MaxLanderYDimension = 3;  //Max size of lander art. Has to be a square that encloses all characters
+const int MaxLanderXDimension = 5;
+const int rotationAmount = 45;
+const double gravAccel = 0.0320;        //Constant downward force
+const double airResistance = 0.005;     //Friction
+
+//LANDER ARTS
+//Note: Thrust calculation is done at midpoint of bottom row.
+char LANDER_UPRIGHT[MaxLanderYDimension][MaxLanderXDimension] = 
+{ 
+    {' ', ' ', ' ', ' ' ,' ' },
+    {' ', ' ', 'O', ' ' ,' ' },
+    {'_', '/', ' ', '\\','_' }
+};
+
+char LANDER_LEFT_TILT[MaxLanderYDimension][MaxLanderXDimension] = 
+{ 
+    {' ', ' ', ' ', ' ' ,' ' },
+    {' ', ' ', 'O', '-' ,'-' },
+    {' ', ' ', ' ', '\\',' ' }
+};
+
+char LANDER_LEFT_FULL[MaxLanderYDimension][MaxLanderXDimension] = 
+{ 
+    {' ', ' ', ' ', '/' ,' ' },
+    {' ', ' ', 'O', ' ' ,' ' },
+    {' ', ' ', ' ', '\\',' ' }
+};
+
+char LANDER_RIGHT_TILT[MaxLanderYDimension][MaxLanderXDimension] = 
+{ 
+    {' ', ' ', ' ', ' ' ,' ' },
+    {'-', '-', 'O', ' ' ,' ' },
+    {' ', '/', ' ', ' ',' ' }
+};
+
+char LANDER_RIGHT_FULL[MaxLanderYDimension][MaxLanderXDimension] = 
+{ 
+    {' ', '\\', ' ', ' ' ,' ' },
+    {' ', ' ', 'O', ' ' ,' ' },
+    {' ', '/', ' ', ' ',' ' }
+};
 
 
-//Arbitrary limit for screen space
-const int limitX = 720;
-const int limitY = 720;
-//Max size of lander art when considering the minimum size of a n*n matrix required to draw it
-const int MaxLanderDimension = 10;
-//Gravity acceleration
-const int gravAccel = 0.0485;
+
+
+
+
+
+
+
+
+
+
+
+
+//UTILITY FUNCTIONS
 
 double toRad(double theta)
 {
@@ -39,137 +89,13 @@ bool isEmpty(int y, int x)
     }
 }
 
-//The player-controlled object.
-typedef struct Lander
-{
-    int yPos = 0;
-    int xPos = 0;
-    double yAccel = 0;
-    double xAccel = 0;
-    double yMover = 0;
-    double xMover = 0;
-    int angleOffset = 0;
-
-    int fuel = 1500;
-    double thrustPower = 0.01525;
-
-    char landerChar = '^';
-    char landerArt[MaxLanderDimension][1];      //First dimension stores location, second is the character associated with the location
-} Lander;
-
-//Checks if moving lander from its current (y,x) to the provided (y,x) will result in collision
-
-//Sets (y,x) of Lander to given (y,x) and redraw it there.
-void setLanderPos(Lander* LnPt, int y, int x)
-{
-    //Check if target destination (and the path inbetween) is empty
-        if(isEmpty(y,x) == false)
-        {
-            printw("Your ship exploded and everyone died :(");
-
-            return;
-        }
-    
-    mvaddch(LnPt->yPos, LnPt->xPos, ' ');
-    LnPt->yPos = y;
-    LnPt->xPos = x;
-    mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
-
-    return;
-}
-
-void drawLander(Lander* LnPt, char ASCIIArt[MaxLanderDimension][1] , int y, int x)
-{
-    //POSITION TO DRAW AT
-    // (y,x) -> 'O'
-    // (y+1,x-1) -> '/'
-    // (y+1,x+1) -> '\'         O
-    // (y+1,x-2) -> '_'       _/ \_
-    // (y+1,x+2) -> '_'
 
 
-}
-
-//Checks if moving LnPt from its current position to (y,x) will result in collision
-bool willCollide(Lander* LnPt, int y, int x)
-{
-    if(isEmpty(y,x) == false)
-    {
-        return true;
-    }
-    else return false;
-}
-
-//Changes the angle offset
-void rotateLander(Lander* LnPt, int angle)
-{
-    int revertValue = LnPt->angleOffset;
-    
-    LnPt->angleOffset += angle;
-
-    if(LnPt->angleOffset < -90 || LnPt->angleOffset > 90)
-    {
-        LnPt->angleOffset = revertValue;
-    }
-
-    return;
-}
 
 
-void thrust(Lander* LnPt, double power)
-{
-    LnPt->yAccel += 1.2*power*-cos(toRad(LnPt->angleOffset));
-    LnPt->xAccel += power*sin(toRad(LnPt->angleOffset));
 
-    LnPt->fuel--;
-}
 
-void mover(Lander* LnPt)
-{
-    int yMove = (int) floor(LnPt->yMover);
-    int xMove = (int) floor(LnPt->xMover);
-    
-    setLanderPos(LnPt, LnPt->yPos + yMove, LnPt->xPos + xMove);
-    LnPt->yMover -= yMove;
-    LnPt->xMover -= xMove;
-}
 
-//Redraws ship ASCII based on current rotation (and other parameters?)
-void updateLander(Lander* LnPt)
-{
-    LnPt->yMover += LnPt->yAccel;
-    LnPt->xMover += LnPt->xAccel;
-
-    //Smoothes out abrupt change in direction
-    if(LnPt->yAccel < 0.01 && LnPt->yAccel > -0.01)
-    {
-        LnPt->yMover = 0.92;
-    }
-    if(LnPt->xAccel < 0.01 && LnPt->xAccel > -0.01)
-    {
-        LnPt->xMover = 0.92;
-    }
-    
-    //Rotation checks
-    if(LnPt->angleOffset > 60)
-    {
-        LnPt->landerChar = '>';
-        mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
-    }
-    else if(LnPt->angleOffset < -60)
-    {
-        LnPt->landerChar = '<';
-        mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
-    }
-    else
-    {
-        LnPt->landerChar = '^';
-        mvaddch(LnPt->yPos, LnPt->xPos, LnPt->landerChar);
-    }
-
-    //Velocity checks
-    mover(LnPt);
-}
 
 
 
@@ -184,7 +110,7 @@ typedef struct Drawer
     int yPos = 0;
 } Drawer;
 
-void moveDrawPt(Drawer* DrPt, int y, int x)
+void moveDrawHelper(Drawer* DrPt, int y, int x)
 {
     DrPt->yPos = y;
     DrPt->xPos = x;
@@ -219,7 +145,7 @@ void drawLevel(Drawer* DrPt)
 {
     int ranA = rand() % 18;         //Used to draw ground
     int ranB = rand() % 10 - 5;     //Used to draw slopes
-    while(DrPt->xPos < limitX)
+    while(DrPt->xPos < screenLimitX)
     {
         if(ranA > 0)
         {
@@ -254,6 +180,171 @@ void drawLevel(Drawer* DrPt)
 
 
 
+
+
+
+//The player-controlled object.
+typedef struct Lander
+{
+    int yPos = 0;
+    int xPos = 0;
+    double yAccel = 0;
+    double xAccel = 0;
+    double yMover = 0;
+    double xMover = 0;
+    int angleOffset = 0;
+
+    int fuel = 500;
+    double thrustPower = 0.01525;
+
+    char landerArt[MaxLanderYDimension][MaxLanderXDimension];
+} Lander;
+
+void setLanderArt(Lander* LnPt, char LanderArt[MaxLanderYDimension][MaxLanderXDimension])
+{
+    for (int i = 0; i < MaxLanderYDimension; i++)
+    {
+        for (int j = 0; j < MaxLanderXDimension; j++)
+        {
+            LnPt->landerArt[i][j] = LanderArt[i][j];
+        }
+    }
+}
+
+//Draws the lander art at current position
+void drawLanderArt(Lander* LnPt)
+{
+    Drawer DrawHelper;
+    DrawHelper.yPos = LnPt->yPos - MaxLanderYDimension - 1;
+    DrawHelper.xPos = LnPt->xPos - ((int) MaxLanderXDimension/2) - 1;
+    
+    for(int i = 0; i<MaxLanderYDimension; i++)
+    {
+        for(int j = 0; j<MaxLanderXDimension; j++)
+        {
+            mvaddch(DrawHelper.yPos + i, DrawHelper.xPos + j, LnPt->landerArt[i][j]);
+        }
+    }
+
+    return;
+}
+
+void eraseLander(Lander* LnPt)
+{
+    Drawer DrawHelper;
+    DrawHelper.yPos = LnPt->yPos - MaxLanderYDimension - 1;
+    DrawHelper.xPos = LnPt->xPos - ((int) MaxLanderXDimension/2) - 1;
+    
+    for(int i = 0; i<MaxLanderYDimension; i++)
+    {
+        for(int j = 0; j<MaxLanderXDimension; j++)
+        {
+            mvaddch(DrawHelper.yPos + i, DrawHelper.xPos + j, ' ');
+        }
+    }
+
+    return;
+}
+
+//Changes the angle offset
+void rotateLander(Lander* LnPt, int angle)
+{
+    int revertValue = LnPt->angleOffset;
+    
+    LnPt->angleOffset += angle;
+
+    if(LnPt->angleOffset < -90 || LnPt->angleOffset > 90)
+    {
+        LnPt->angleOffset = revertValue;
+    }
+
+    return;
+}
+
+//Sets (y,x) of Lander to given (y,x) and redraw it there.
+void moveLander(Lander* LnPt, int y, int x)
+{   
+    eraseLander(LnPt);
+    LnPt->yPos = y;
+    LnPt->xPos = x;
+    drawLanderArt(LnPt);
+
+    return;
+}
+
+
+void thrust(Lander* LnPt, double power)
+{
+    LnPt->yAccel += 1.2*power*-cos(toRad(LnPt->angleOffset));
+    LnPt->xAccel += power*sin(toRad(LnPt->angleOffset));
+
+    LnPt->fuel--;
+}
+
+void mover(Lander* LnPt)
+{
+    int yMove = (int) floor(LnPt->yMover);
+    int xMove = (int) floor(LnPt->xMover);
+    
+    moveLander(LnPt, LnPt->yPos + yMove, LnPt->xPos + xMove);
+    LnPt->yMover -= yMove;
+    LnPt->xMover -= xMove;
+}
+
+//Redraws ship ASCII based on current rotation (and other parameters?)
+void updateLander(Lander* LnPt)
+{
+    LnPt->yMover += LnPt->yAccel;
+    LnPt->xMover += LnPt->xAccel;
+
+    //Smoothes out abrupt change in direction
+    if(LnPt->yAccel < 0.01 && LnPt->yAccel > -0.01)
+    {
+        LnPt->yMover = 0.92;
+    }
+    if(LnPt->xAccel < 0.01 && LnPt->xAccel > -0.01)
+    {
+        LnPt->xMover = 0.92;
+    }
+    
+    //Rotation checks
+    if(LnPt->angleOffset > 20 && LnPt->angleOffset < 75)
+    {
+        setLanderArt(LnPt, LANDER_RIGHT_TILT);
+    }
+    else if(LnPt->angleOffset >= 65)
+    {
+        setLanderArt(LnPt, LANDER_RIGHT_FULL);
+    }
+    else if(LnPt->angleOffset < -20 && LnPt->angleOffset > -75)
+    {
+        setLanderArt(LnPt, LANDER_LEFT_TILT);
+    }
+    else if(LnPt->angleOffset <= -65)
+    {
+        setLanderArt(LnPt, LANDER_LEFT_FULL);
+    }
+    else
+    {
+        setLanderArt(LnPt, LANDER_UPRIGHT);
+    }
+
+    //Velocity checks
+    mover(LnPt);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 int main()
 {
     srand(time(NULL));
@@ -261,10 +352,12 @@ int main()
 
     Lander Lunar;
     Lander* LunarPt = &Lunar;
-    Lunar.yPos = 0;
+    Lunar.yPos = 0 + MaxLanderYDimension;
     Lunar.xPos = 5;
     Lunar.fuel = 500;
+    Lunar.thrustPower = 0.025;
     Lunar.angleOffset = 0;
+    setLanderArt(LunarPt, LANDER_UPRIGHT);
 
     Drawer D;
     Drawer* DrPt = &D;
@@ -327,15 +420,15 @@ int main()
         }
         else if(userInput == 97)    //A Key
         {
-            rotateLander(LunarPt, -15);
+            rotateLander(LunarPt, -rotationAmount);
         }
         else if(userInput == 115)    //S Key
         {
-            setLanderPos(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
+            moveLander(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
         }
         else if(userInput == 100)    //D Key
         {
-            rotateLander(LunarPt, 15);
+            rotateLander(LunarPt, rotationAmount);
         }
 
         //Every-loop codes
@@ -343,9 +436,32 @@ int main()
         {
             updateLander(LunarPt);
 
-            if(LunarPt->yAccel < 3)
+            //Friction calculation
+            if(LunarPt->yPos >= 0)
             {
-                LunarPt->yAccel += gravAccel;
+                LunarPt->yAccel += gravAccel - airResistance;
+            }
+            else
+            {
+                LunarPt->yAccel += 12*gravAccel;
+            }
+
+            if(LunarPt->yAccel > 3 && LunarPt->yPos >= 0)
+            {
+                LunarPt->yAccel = 3;
+            }
+
+            if(LunarPt->xAccel > 0)
+            {
+                LunarPt->xAccel -= airResistance;
+            }
+            else if(LunarPt->xAccel < 0)
+            {
+                LunarPt->xAccel += airResistance;
+            }
+            if(LunarPt->xAccel < 0.01 && LunarPt->xAccel > -0.01)
+            {
+                LunarPt->xAccel = 0;
             }
         }
 
