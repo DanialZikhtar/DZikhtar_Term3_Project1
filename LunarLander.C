@@ -172,6 +172,48 @@ void drawLevel(Drawer* DrPt)
             }
         }
     }
+
+    return;
+}
+
+//Draws an explosion at (y,x) according to specified dimensions
+void DrawExplosion(int y, int x, int sizeY, int sizeX)
+{
+    Drawer DrawHelper;
+    DrawHelper.yPos = y - 1;
+    DrawHelper.xPos = x - 1;
+
+    //First Pass
+    for(int i = 0; i< 3; i++)
+    {
+        for(int j = 0; j< 3; j++)
+        {          
+            mvaddch(DrawHelper.yPos + i, DrawHelper.xPos + j, '*');
+        }
+    }
+
+    DrawHelper.yPos = (int) y - sizeY/2;
+    DrawHelper.xPos = (int) x - sizeX/2;
+    int random;
+    int distToCentre;
+
+    //Second Pass
+    for(int i = 0; i<sizeY; i++)
+    {
+        for(int j = 0; j<sizeX; j++)
+        {          
+            distToCentre = (int) sqrt(pow(((DrawHelper.yPos + i) - y), 2) + pow(((DrawHelper.xPos + j) - x), 2));
+            
+            random = rand() % 10 + distToCentre;
+            if(random <= 4)
+            {
+                mvaddch(DrawHelper.yPos + i, DrawHelper.xPos + j, '*');
+            }
+        }
+    }
+
+
+    return;
 }
 
 
@@ -190,8 +232,8 @@ typedef struct Lander
     int xPos = 0;
     double yAccel = 0;
     double xAccel = 0;
-    double yMover = 0;
-    double xMover = 0;
+    double yVelo = 0;
+    double xVelo = 0;
     int angleOffset = 0;
 
     int fuel = 500;
@@ -222,6 +264,12 @@ void drawLanderArt(Lander* LnPt)
     {
         for(int j = 0; j<MaxLanderXDimension; j++)
         {
+            //Prevents function from erasing non-lander characters. Lander characters can still replace other characters
+            while(LnPt->landerArt[i][j] == ' ' && mvinch(DrawHelper.yPos + i, DrawHelper.xPos + j) != 32 && j<MaxLanderXDimension)
+            {
+                j++;
+            }
+            
             mvaddch(DrawHelper.yPos + i, DrawHelper.xPos + j, LnPt->landerArt[i][j]);
         }
     }
@@ -283,28 +331,28 @@ void thrust(Lander* LnPt, double power)
 
 void mover(Lander* LnPt)
 {
-    int yMove = (int) floor(LnPt->yMover);
-    int xMove = (int) floor(LnPt->xMover);
+    int yMove = (int) floor(LnPt->yVelo);
+    int xMove = (int) floor(LnPt->xVelo);
     
     moveLander(LnPt, LnPt->yPos + yMove, LnPt->xPos + xMove);
-    LnPt->yMover -= yMove;
-    LnPt->xMover -= xMove;
+    LnPt->yVelo -= yMove;
+    LnPt->xVelo -= xMove;
 }
 
 //Redraws ship ASCII based on current rotation (and other parameters?)
 void updateLander(Lander* LnPt)
 {
-    LnPt->yMover += LnPt->yAccel;
-    LnPt->xMover += LnPt->xAccel;
+    LnPt->yVelo += LnPt->yAccel;
+    LnPt->xVelo += LnPt->xAccel;
 
     //Smoothes out abrupt change in direction
     if(LnPt->yAccel < 0.01 && LnPt->yAccel > -0.01)
     {
-        LnPt->yMover = 0.92;
+        LnPt->yVelo = 0.92;
     }
     if(LnPt->xAccel < 0.01 && LnPt->xAccel > -0.01)
     {
-        LnPt->xMover = 0.92;
+        LnPt->xVelo = 0.92;
     }
     
     //Rotation checks
@@ -376,6 +424,8 @@ int main()
     nodelay(stdscr, true);
     curs_set(0);
 
+    mvaddch(6, 24, 'A');
+
     while(1)
     {
         //User Interface Codes
@@ -393,8 +443,8 @@ int main()
             mvprintw(2, i, " ");
             mvprintw(3, i, " ");
         }
-        mvprintw(2, COLS - 30, "yAccel: %0.3f yMover: %0.3f", LunarPt->yAccel, LunarPt->yMover);
-        mvprintw(3, COLS - 30, "xAccel: %0.3f xMover: %0.3f", LunarPt->xAccel, LunarPt->xMover);
+        mvprintw(2, COLS - 30, "yAccel: %0.3f yVelo: %0.3f", LunarPt->yAccel, LunarPt->yVelo);
+        mvprintw(3, COLS - 30, "xAccel: %0.3f xVelo: %0.3f", LunarPt->xAccel, LunarPt->xVelo);
 
         //Button Presses Codes
         userInput = getch();
@@ -409,7 +459,7 @@ int main()
         }
         else if(userInput == 32)    //Spacebar Key
         {
-            
+            DrawExplosion(6, 24, 10, 10);
         }
         else if(userInput == 119)    //W Key
         {
