@@ -6,7 +6,9 @@
 #include <ncurses.h>
 
 const int ScreenLimitY = 720;   //Arbitrary limit for screen space
-const int screenLimitX = 720;
+const int ScreenLimitX = 720;
+const int StartY = 4;           //Start position of lander
+const int StartX = 8;
 const int MaxLanderYDimension = 3;  //Max size of lander art. Has to be a square that encloses all characters
 const int MaxLanderXDimension = 5;
 const int rotationAmount = 45;
@@ -16,8 +18,10 @@ const double airResistance = 0.005;     //Friction
 const double LandableYAccel = 1.2;       //Maximum y-accel value for which a landing check succeeds
 const double LandableXAccel = 4.0;        //Maximum x-accel value for which a landing check succeeds
 
+bool LanderPersist = false;             //If true, lander will remain on screen at landing spot after landing (and you can't land there again)
+
 //LANDER ARTS
-//Note: Thrust calculation is done at midpoint of bottom row.
+//Note: Thrust calculation is done at midpoint of bottom row. Landing check is done via at least one '_' character overlapping with at least one '_' character on the ground
 char LANDER_UPRIGHT[MaxLanderYDimension][MaxLanderXDimension] = 
 { 
     {' ', ' ', ' ', ' ' ,' ' },
@@ -148,7 +152,7 @@ void drawLevel(Drawer* DrPt)
 {
     int ranA = rand() % 18;         //Used to draw ground
     int ranB = rand() % 10 - 5;     //Used to draw slopes
-    while(DrPt->xPos < screenLimitX)
+    while(DrPt->xPos < ScreenLimitX)
     {
         if(ranA > 0)
         {
@@ -207,7 +211,7 @@ void DrawExplosion(int y, int x, int size)
         {          
             distToCentre = (int) sqrt(pow(((DrawHelper.yPos + i) - y), 2) + pow(((DrawHelper.xPos + j) - x), 2));
             
-            random = rand() % 11 + distToCentre;
+            random = rand() % size + distToCentre;
             if(random <= 0.55*size)
             {
                 mvaddch(DrawHelper.yPos + i, DrawHelper.xPos + j, '*');
@@ -218,6 +222,25 @@ void DrawExplosion(int y, int x, int size)
 
     return;
 }
+
+void RemoveExplosion(int y, int x, int size)
+{
+    Drawer DrawHelper;   
+    DrawHelper.yPos = (int) y - size/2;
+    DrawHelper.xPos = (int) x - size/2; 
+
+    for(int i = 0; i<size; i++)
+    {
+        for(int j = 0; j<size; j++)
+        {          
+            if(mvinch(y, x) == 42)
+            {
+                mvaddch(DrawHelper.yPos + i, DrawHelper.xPos + j, ' ');
+            }
+        }
+    }
+}
+
 
 
 
@@ -244,6 +267,8 @@ typedef struct Lander
     int fuel = 500;
     double thrustPower = 0.01525;
 
+    bool IsDestroyed = false;
+
     char landerArt[MaxLanderYDimension][MaxLanderXDimension];
 } Lander;
 
@@ -256,6 +281,14 @@ void setLanderArt(Lander* LnPt, char LanderArt[MaxLanderYDimension][MaxLanderXDi
             LnPt->landerArt[i][j] = LanderArt[i][j];
         }
     }
+}
+
+void thrust(Lander* LnPt, double power)
+{
+    LnPt->yAccel += 1.2*power*-cos(toRad(LnPt->angleOffset));
+    LnPt->xAccel += power*sin(toRad(LnPt->angleOffset));
+
+    LnPt->fuel--;
 }
 
 //Draws the lander art at current position
@@ -276,6 +309,23 @@ void drawLanderArt(Lander* LnPt)
             }
             
             mvaddch(DrawHelper.yPos + i, DrawHelper.xPos + j, LnPt->landerArt[i][j]);
+        }
+    }
+
+    return;
+}
+
+void eraseLander(Lander* LnPt)
+{
+    Drawer DrawHelper;
+    DrawHelper.yPos = LnPt->yPos - MaxLanderYDimension - 1;
+    DrawHelper.xPos = LnPt->xPos - ((int) MaxLanderXDimension/2) - 1;
+    
+    for(int i = 0; i<MaxLanderYDimension; i++)
+    {
+        for(int j = 0; j<MaxLanderXDimension; j++)
+        {
+            mvaddch(DrawHelper.yPos + i, DrawHelper.xPos + j, ' ');
         }
     }
 
@@ -310,7 +360,7 @@ bool checkCollision(Lander* LnPt, int y, int x)
     return false;
 }
 
-//Special collision check, returns true if both '_' character on lander overlaps with a '_' on the ground
+//Special collision check, returns true if '_' character on lander overlaps with a '_' on the ground
 bool checkLandable(Lander* LnPt, int y, int x)
 {
     Drawer DrawHelper;
@@ -332,57 +382,6 @@ bool checkLandable(Lander* LnPt, int y, int x)
     return false;
 }
 
-void eraseLander(Lander* LnPt)
-{
-    Drawer DrawHelper;
-    DrawHelper.yPos = LnPt->yPos - MaxLanderYDimension - 1;
-    DrawHelper.xPos = LnPt->xPos - ((int) MaxLanderXDimension/2) - 1;
-    
-    for(int i = 0; i<MaxLanderYDimension; i++)
-    {
-        for(int j = 0; j<MaxLanderXDimension; j++)
-        {
-            mvaddch(DrawHelper.yPos + i, DrawHelper.xPos + j, ' ');
-        }
-    }
-
-    return;
-}
-
-void resetLander(Lander* LnPt)
-{
-    LnPt->yPos = 2;
-    LnPt->xPos = 8;
-
-    return;
-}
-
-//Sets (y,x) of Lander to given (y,x) and redraw it there.
-void moveLander(Lander* LnPt, int y, int x)
-{   
-    eraseLander(LnPt);
-    if(checkCollision(LnPt, y, x) == true)
-    {
-        if(checkLandable(LnPt, y, x) == true)
-        {
-            LnPt->yPos = y;
-            LnPt->xPos = x;
-            drawLanderArt(LnPt);
-            resetLander(LnPt);
-            return;
-        }
-        
-        DrawExplosion(y, x, explosionSize);
-        resetLander(LnPt);
-        return;
-    }
-    LnPt->yPos = y;
-    LnPt->xPos = x;
-    drawLanderArt(LnPt);
-
-    return;
-}
-
 //Changes the angle offset
 void rotateLander(Lander* LnPt, int angle)
 {
@@ -398,13 +397,29 @@ void rotateLander(Lander* LnPt, int angle)
     return;
 }
 
+//Sets (y,x) of Lander to given (y,x) and redraw it there.
+void moveLander(Lander* LnPt, int y, int x)
+{   
+    eraseLander(LnPt);
+    if(checkCollision(LnPt, y, x) == true)
+    {
+        if(checkLandable(LnPt, y, x) == true)
+        {
+            LnPt->yPos = y;
+            LnPt->xPos = x;
+            drawLanderArt(LnPt);
+            nodelay(stdscr, false);
+            return;
+        }
+        
+        DrawExplosion(y, x, explosionSize);
+        return;
+    }
+    LnPt->yPos = y;
+    LnPt->xPos = x;
+    drawLanderArt(LnPt);
 
-void thrust(Lander* LnPt, double power)
-{
-    LnPt->yAccel += 1.2*power*-cos(toRad(LnPt->angleOffset));
-    LnPt->xAccel += power*sin(toRad(LnPt->angleOffset));
-
-    LnPt->fuel--;
+    return;
 }
 
 void mover(Lander* LnPt)
@@ -417,9 +432,28 @@ void mover(Lander* LnPt)
     LnPt->xVelo -= xMove;
 }
 
-//Redraws ship ASCII based on current rotation (and other parameters?)
-void updateLander(Lander* LnPt)
+void resetLander(Lander* LnPt)
 {
+    eraseLander(LnPt);
+    
+    LnPt->IsDestroyed = false;
+    nodelay(stdscr, true);
+    
+    LnPt->yPos = StartY;
+    LnPt->xPos = StartX;
+    LnPt->yVelo = 0;
+    LnPt->xVelo = 0;
+    LnPt->yAccel = 0;
+    LnPt->xAccel = 0;
+    LnPt->angleOffset = 0;
+
+    return;
+}
+
+//Redraws ship ASCII based on current rotation and perform checks
+void updateLander(Lander* LnPt)
+{ 
+    //Acceleration and velocity calculation
     LnPt->yVelo += LnPt->yAccel;
     LnPt->xVelo += LnPt->xAccel;
 
@@ -458,7 +492,6 @@ void updateLander(Lander* LnPt)
     //Velocity checks
     mover(LnPt);
 }
-
 
 
 
@@ -535,7 +568,7 @@ int main()
         }
         else if(userInput == 32)    //Spacebar Key
         {
-            DrawExplosion(LunarPt->yPos, LunarPt->xPos, explosionSize);
+            resetLander(LunarPt);
         }
         else if(userInput == 119)    //W Key
         {
@@ -555,6 +588,10 @@ int main()
         else if(userInput == 100)    //D Key
         {
             rotateLander(LunarPt, rotationAmount);
+        }
+        else if(userInput == 82)    //R Key
+        {
+            
         }
 
         //Every-loop codes
