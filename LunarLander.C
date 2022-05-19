@@ -144,14 +144,14 @@ void moveDrawHelper(Drawer* DrPt, int y, int x)
 //For use with level generation algorthm
 void drawGround(Drawer* DrPt)
 {
-    mvprintw(DrPt->yPos, DrPt->xPos, "_");
+    mvaddch(DrPt->yPos, DrPt->xPos, '_');
     DrPt->xPos++;
 }
 
 //For use with level generation algorthm
 void drawUpSlope(Drawer* DrPt)
 {
-    mvprintw(DrPt->yPos, DrPt->xPos, "/");
+    mvaddch(DrPt->yPos, DrPt->xPos, '/');
     DrPt->yPos--;
     DrPt->xPos++;
 }
@@ -160,21 +160,36 @@ void drawUpSlope(Drawer* DrPt)
 void drawDownSlope(Drawer* DrPt)
 {
     DrPt->yPos++;
-    mvprintw(DrPt->yPos, DrPt->xPos, "\\");
+    mvaddch(DrPt->yPos, DrPt->xPos, '\\');
     DrPt->xPos++;
 }
 
-//The level generation algorithm. Should only be called once per level.
-//Drawer should point to bottom left of intended screen space before calling e.g (LINES - 1, 0)
-void drawLevel(Drawer* DrPt)
+typedef struct Level
 {
+    int StartYPos;
+    int StartXPos;
+    char Layout[ScreenLimitX];
+    Level* Right = NULL;
+    Level* Left = NULL;
+}Level;
+
+//The level generation algorithm. Generates a level at DrPt then stores it in BaseLvl
+//Drawer should point to bottom left of intended screen space before calling e.g (LINES - 1, 0) 
+void GenerateLevel(Drawer* DrPt, Level* BaseLvl)
+{ 
+    BaseLvl->StartYPos = DrPt->yPos;
+    BaseLvl->StartXPos = DrPt->xPos;
+    
     int ranA = rand() % 18;         //Used to draw ground
     int ranB = rand() % 10 - 5;     //Used to draw slopes
+    int counter = 0;
     while(DrPt->xPos < ScreenLimitX)
     {
         if(ranA > 0)
         {
             drawGround(DrPt);
+            BaseLvl->Layout[counter] = '_';
+            counter++;
             ranA--;
         }
         else
@@ -182,11 +197,15 @@ void drawLevel(Drawer* DrPt)
             if(ranB > 0 && DrPt->yPos > 5)
             {
                 drawUpSlope(DrPt);
+                BaseLvl->Layout[counter] = '/';
+                counter++;
                 ranB--;
             }
             else if(ranB < 0 && DrPt->yPos < LINES - 1)
             {
                 drawDownSlope(DrPt);
+                BaseLvl->Layout[counter] = '\\';
+                counter++;
                 ranB++;
                 ranB++;
             }
@@ -199,6 +218,38 @@ void drawLevel(Drawer* DrPt)
     }
 
     return;
+}
+
+void DrawLevel(Level* Lvl)
+{
+    int counter = 0;
+    
+    Drawer DrawerHelper;
+    DrawerHelper.yPos = Lvl->StartYPos;
+    DrawerHelper.xPos = Lvl->StartXPos;
+
+    while(counter < ScreenLimitX - 1)
+    {
+        if(Lvl->Layout[counter] == '_')
+        {
+            mvaddch(DrawerHelper.yPos, DrawerHelper.xPos, Lvl->Layout[counter]);
+            DrawerHelper.xPos++;
+        }
+        else if(Lvl->Layout[counter] == '/')
+        {
+            mvaddch(DrawerHelper.yPos, DrawerHelper.xPos, Lvl->Layout[counter]);
+            DrawerHelper.yPos--;
+            DrawerHelper.xPos++;
+        }
+        else if(Lvl->Layout[counter] == '\\')
+        {
+            DrawerHelper.yPos++;
+            mvaddch(DrawerHelper.yPos, DrawerHelper.xPos, Lvl->Layout[counter]);
+            DrawerHelper.xPos++;
+        }
+
+        counter++;
+    }
 }
 
 //Draws an explosion at (y,x) according to specified dimensions
@@ -589,7 +640,10 @@ int main()
     D.yPos = LINES - 1;
     D.xPos = 0;
 
-    drawLevel(DrPt);
+    Level Lvl1;
+    Level* L1 = &Lvl1;
+
+    GenerateLevel(DrPt, L1);
 
     GameActive = true;
     int userInput;
@@ -667,7 +721,7 @@ int main()
         {
             if(userInput == 10)         //Enter Key
             {
-                
+                DrawLevel(L1);
             }
             else if(userInput == 27)    //Escape key
             {
