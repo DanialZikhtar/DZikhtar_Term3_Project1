@@ -13,6 +13,8 @@ const int rotationAmount = 45;
 const int explosionSize = 13;
 const double gravAccel = 0.0320;        //Constant downward force
 const double airResistance = 0.005;     //Friction
+const double LandableYAccel = 1.2;       //Maximum y-accel value for which a landing check succeeds
+const double LandableXAccel = 4.0;        //Maximum x-accel value for which a landing check succeeds
 
 //LANDER ARTS
 //Note: Thrust calculation is done at midpoint of bottom row.
@@ -226,6 +228,8 @@ void DrawExplosion(int y, int x, int size)
 
 
 
+
+
 //The player-controlled object.
 typedef struct Lander
 {
@@ -278,6 +282,56 @@ void drawLanderArt(Lander* LnPt)
     return;
 }
 
+//Checks collision by checking if drawing lander at (y,x) would result in conflict
+bool checkCollision(Lander* LnPt, int y, int x)
+{
+    Drawer DrawHelper;
+    DrawHelper.yPos = y - MaxLanderYDimension - 1;
+    DrawHelper.xPos = x - ((int) MaxLanderXDimension/2) - 1;
+
+    for(int i = 0; i<MaxLanderYDimension; i++)
+    {
+        for(int j = 0; j<MaxLanderXDimension; j++)
+        {
+            //If lander character to check is ' ', ignore and skip ahead
+            while(LnPt->landerArt[i][j] == ' ' && j<MaxLanderXDimension)
+            {
+                j++;
+            }
+            
+            if(mvinch(DrawHelper.yPos + i, DrawHelper.xPos + j) != 32 && mvinch(DrawHelper.yPos + i, DrawHelper.xPos + j) != -1)
+            {
+                return true;
+            }
+                
+        }
+    }
+
+    return false;
+}
+
+//Special collision check, returns true if both '_' character on lander overlaps with a '_' on the ground
+bool checkLandable(Lander* LnPt, int y, int x)
+{
+    Drawer DrawHelper;
+    DrawHelper.yPos = y - MaxLanderYDimension - 1;
+    DrawHelper.xPos = x - ((int) MaxLanderXDimension/2) - 1;
+
+    for(int i = 0; i<MaxLanderYDimension; i++)
+    {
+        for(int j = 0; j<MaxLanderXDimension; j++)
+        {            
+            if(mvinch(DrawHelper.yPos + i, DrawHelper.xPos + j) == 95 && LnPt->landerArt[i][j] == '_' && LnPt->yAccel < LandableYAccel && LnPt->xAccel < LandableXAccel)
+            {
+                return true;
+            }
+                
+        }
+    }
+
+    return false;
+}
+
 void eraseLander(Lander* LnPt)
 {
     Drawer DrawHelper;
@@ -295,6 +349,40 @@ void eraseLander(Lander* LnPt)
     return;
 }
 
+void resetLander(Lander* LnPt)
+{
+    LnPt->yPos = 2;
+    LnPt->xPos = 8;
+
+    return;
+}
+
+//Sets (y,x) of Lander to given (y,x) and redraw it there.
+void moveLander(Lander* LnPt, int y, int x)
+{   
+    eraseLander(LnPt);
+    if(checkCollision(LnPt, y, x) == true)
+    {
+        if(checkLandable(LnPt, y, x) == true)
+        {
+            LnPt->yPos = y;
+            LnPt->xPos = x;
+            drawLanderArt(LnPt);
+            resetLander(LnPt);
+            return;
+        }
+        
+        DrawExplosion(y, x, explosionSize);
+        resetLander(LnPt);
+        return;
+    }
+    LnPt->yPos = y;
+    LnPt->xPos = x;
+    drawLanderArt(LnPt);
+
+    return;
+}
+
 //Changes the angle offset
 void rotateLander(Lander* LnPt, int angle)
 {
@@ -306,17 +394,6 @@ void rotateLander(Lander* LnPt, int angle)
     {
         LnPt->angleOffset = revertValue;
     }
-
-    return;
-}
-
-//Sets (y,x) of Lander to given (y,x) and redraw it there.
-void moveLander(Lander* LnPt, int y, int x)
-{   
-    eraseLander(LnPt);
-    LnPt->yPos = y;
-    LnPt->xPos = x;
-    drawLanderArt(LnPt);
 
     return;
 }
