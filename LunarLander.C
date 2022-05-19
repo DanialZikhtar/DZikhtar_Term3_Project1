@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -5,19 +6,21 @@
 #include <stdlib.h>
 #include <ncurses.h>
 
-const int ScreenLimitY = 720;   //Arbitrary limit for screen space
+const int ScreenLimitY = 720;           //Arbitrary limit for screen space
 const int ScreenLimitX = 720;
-const int StartY = 4;           //Start position of lander
+const int StartY = 4;                   //Start position of lander
 const int StartX = 8;
-const int MaxLanderYDimension = 3;  //Max size of lander art. Has to be a square that encloses all characters
+const int MaxLanderYDimension = 3;      //Max size of lander art. Has to be a square that encloses all characters
 const int MaxLanderXDimension = 5;
 const int rotationAmount = 45;
 const int explosionSize = 13;
+const int GravityCap = 3;               //Maximum gravity force (yAccel) that the lander can have. (actually just downward force in general, but you can't thrust downwards anyway so)
 const double gravAccel = 0.0320;        //Constant downward force
 const double airResistance = 0.005;     //Friction
 const double LandableYAccel = 1.2;       //Maximum y-accel value for which a landing check succeeds
 const double LandableXAccel = 4.0;        //Maximum x-accel value for which a landing check succeeds
 
+bool GameActive;
 bool LanderPersist = false;             //If true, lander will remain on screen at landing spot after landing (and you can't land there again)
 
 //LANDER ARTS
@@ -95,6 +98,21 @@ bool isEmpty(int y, int x)
         return false;
     }
 }
+
+//Pauses the whole screen
+void GamePause()
+{
+    GameActive = false;
+    nodelay(stdscr, false);
+}
+
+//Resumes the whole screen
+void GameResume()
+{
+    GameActive = true;
+    nodelay(stdscr, true);
+}
+
 
 
 
@@ -223,22 +241,25 @@ void DrawExplosion(int y, int x, int size)
     return;
 }
 
-void RemoveExplosion(int y, int x, int size)
+void EraseExplosion(int y, int x, int size)
 {
-    Drawer DrawHelper;   
+    Drawer DrawHelper;
     DrawHelper.yPos = (int) y - size/2;
-    DrawHelper.xPos = (int) x - size/2; 
+    DrawHelper.xPos = (int) x - size/2;
 
     for(int i = 0; i<size; i++)
     {
         for(int j = 0; j<size; j++)
         {          
-            if(mvinch(y, x) == 42)
+            if(mvinch(DrawHelper.yPos + i,DrawHelper.xPos + j) == '*')
             {
                 mvaddch(DrawHelper.yPos + i, DrawHelper.xPos + j, ' ');
             }
         }
     }
+
+
+    return;
 }
 
 
@@ -268,6 +289,7 @@ typedef struct Lander
     double thrustPower = 0.01525;
 
     bool IsDestroyed = false;
+    bool IsLanded = false;
 
     char landerArt[MaxLanderYDimension][MaxLanderXDimension];
 } Lander;
@@ -408,11 +430,11 @@ void moveLander(Lander* LnPt, int y, int x)
             LnPt->yPos = y;
             LnPt->xPos = x;
             drawLanderArt(LnPt);
-            nodelay(stdscr, false);
+            LnPt->IsLanded = true;
             return;
         }
-        
-        DrawExplosion(y, x, explosionSize);
+
+        LnPt->IsDestroyed = true;
         return;
     }
     LnPt->yPos = y;
@@ -422,6 +444,8 @@ void moveLander(Lander* LnPt, int y, int x)
     return;
 }
 
+//A level of abstraction controlling the moveLander() function. Use velocity (after accel calculation) to move to a new position.
+//This is what should be called to move the lander under physics.
 void mover(Lander* LnPt)
 {
     int yMove = (int) floor(LnPt->yVelo);
@@ -433,10 +457,9 @@ void mover(Lander* LnPt)
 }
 
 void resetLander(Lander* LnPt)
-{
-    eraseLander(LnPt);
-    
+{  
     LnPt->IsDestroyed = false;
+    LnPt->IsLanded = false;
     nodelay(stdscr, true);
     
     LnPt->yPos = StartY;
@@ -450,9 +473,54 @@ void resetLander(Lander* LnPt)
     return;
 }
 
-//Redraws ship ASCII based on current rotation and perform checks
+//The ultimate function that controls lander behavior.
+//Checks for various properties and update the visuals. Also calls nessecary move functions.
 void updateLander(Lander* LnPt)
 { 
+    //Destruct check (see if lander has crashed)
+    if(LnPt->IsDestroyed == true)
+    {
+        DrawExplosion(LnPt->yPos, LnPt->xPos, explosionSize);
+        GamePause();
+        return;
+    }
+
+    //Landed check (see if lander has landed)
+    //Functionally the same as destruct check, but I want features added to specifically the landed state later
+    if(LnPt->IsLanded == true)
+    {
+        GamePause();
+        return;
+    }
+
+    //Friction calculation
+    if(LnPt->yPos >= 0)
+    {
+        LnPt->yAccel += gravAccel - airResistance;
+    }
+    else
+    {
+        LnPt->yAccel += 8*gravAccel;
+    }
+
+    if(LnPt->yAccel > GravityCap && LnPt->yPos >= 0)
+    {
+        LnPt->yAccel = GravityCap;
+    }
+
+    if(LnPt->xAccel > 0)
+    {
+        LnPt->xAccel -= airResistance;
+    }
+    else if(LnPt->xAccel < 0)
+    {
+        LnPt->xAccel += airResistance;
+    }
+    if(LnPt->xAccel < 0.01 && LnPt->xAccel > -0.01)
+    {
+        LnPt->xAccel = 0;
+    }              
+    
     //Acceleration and velocity calculation
     LnPt->yVelo += LnPt->yAccel;
     LnPt->xVelo += LnPt->xAccel;
@@ -502,8 +570,6 @@ void updateLander(Lander* LnPt)
 
 
 
-
-
 int main()
 {
     srand(time(NULL));
@@ -525,6 +591,7 @@ int main()
 
     drawLevel(DrPt);
 
+    GameActive = true;
     int userInput;
     int tick = 0;
 
@@ -555,77 +622,74 @@ int main()
         mvprintw(2, COLS - 30, "yAccel: %0.3f yVelo: %0.3f", LunarPt->yAccel, LunarPt->yVelo);
         mvprintw(3, COLS - 30, "xAccel: %0.3f xVelo: %0.3f", LunarPt->xAccel, LunarPt->xVelo);
 
-        //Button Presses Codes
+        //Button Presses Codes, divided into active (unpaused) and inactive (paused) state
         userInput = getch();
-        if(userInput == 10)         //Enter Key
+        if(GameActive == true)      //Active state
         {
-            
-        }
-        else if(userInput == 27)    //Escape key
-        {
-            endwin();
-            break;
-        }
-        else if(userInput == 32)    //Spacebar Key
-        {
-            resetLander(LunarPt);
-        }
-        else if(userInput == 119)    //W Key
-        {
-            if(LunarPt->fuel > 0)
+            if(userInput == 10)         //Enter Key
             {
-                thrust(LunarPt, LunarPt->thrustPower);
+                
+            }
+            else if(userInput == 27)    //Escape key
+            {
+                endwin();
+                break;
+            }
+            else if(userInput == 32)    //Spacebar Key
+            {
+
+            }
+            else if(userInput == 119)    //W Key
+            {
+                if(LunarPt->fuel > 0)
+                {
+                    thrust(LunarPt, LunarPt->thrustPower);
+                }
+            }
+            else if(userInput == 97)    //A Key
+            {
+                rotateLander(LunarPt, -rotationAmount);
+            }
+            else if(userInput == 115)    //S Key
+            {
+                moveLander(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
+            }
+            else if(userInput == 100)    //D Key
+            {
+                rotateLander(LunarPt, rotationAmount);
+            }
+            else if(userInput == 82)    //R Key
+            {
+                
             }
         }
-        else if(userInput == 97)    //A Key
+        else if(GameActive == false)        //Inactive state
         {
-            rotateLander(LunarPt, -rotationAmount);
-        }
-        else if(userInput == 115)    //S Key
-        {
-            moveLander(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
-        }
-        else if(userInput == 100)    //D Key
-        {
-            rotateLander(LunarPt, rotationAmount);
-        }
-        else if(userInput == 82)    //R Key
-        {
-            
+            if(userInput == 10)         //Enter Key
+            {
+                
+            }
+            else if(userInput == 27)    //Escape key
+            {
+                endwin();
+                break;
+            }
+            else if(userInput == 32)    //Spacebar Key
+            {
+                EraseExplosion(LunarPt->yPos, LunarPt->xPos, explosionSize);
+                resetLander(LunarPt);
+                GameResume();
+            }
+            else if(userInput == 82)    //R Key
+            {
+                
+            }
         }
 
         //Every-loop codes
-        if(tick % 30480 == 0)
+        if(tick % 30480 == 0 && GameActive == true)
         {
             updateLander(LunarPt);
-
-            //Friction calculation
-            if(LunarPt->yPos >= 0)
-            {
-                LunarPt->yAccel += gravAccel - airResistance;
-            }
-            else
-            {
-                LunarPt->yAccel += 12*gravAccel;
-            }
-
-            if(LunarPt->yAccel > 3 && LunarPt->yPos >= 0)
-            {
-                LunarPt->yAccel = 3;
-            }
-
-            if(LunarPt->xAccel > 0)
-            {
-                LunarPt->xAccel -= airResistance;
-            }
-            else if(LunarPt->xAccel < 0)
-            {
-                LunarPt->xAccel += airResistance;
-            }
-            if(LunarPt->xAccel < 0.01 && LunarPt->xAccel > -0.01)
-            {
-                LunarPt->xAccel = 0;
-            }
         }
 
         refresh();
