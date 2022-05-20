@@ -790,6 +790,7 @@ int main()
 
     refresh();
 
+    keypad(stdscr, true);
     raw();
     noecho();
     curs_set(0);
@@ -872,6 +873,25 @@ int main()
                 moveLander(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
             }
             else if(userInput == 100)    //D Key
+            {
+                rotateLander(LunarPt, rotationAmount);
+            }
+            else if(userInput == 259)    //Up arrow key
+            {
+                if(LunarPt->fuel > 0)
+                {
+                    thrust(LunarPt, LunarPt->thrustPower);
+                }               
+            }
+            else if(userInput == 260)    //Left arrow key
+            {
+                rotateLander(LunarPt, -rotationAmount);
+            }
+            else if(userInput == 258)    //Down arrow key
+            {
+                moveLander(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
+            }
+            else if(userInput == 261)    //Right arrow key
             {
                 rotateLander(LunarPt, rotationAmount);
             }
