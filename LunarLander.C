@@ -19,6 +19,8 @@ const double gravAccel = 0.0320;        //Constant downward force
 const double airResistance = 0.005;     //Friction
 const double LandableYAccel = 1.2;       //Maximum y-accel value for which a landing check succeeds
 const double LandableXAccel = 4.0;        //Maximum x-accel value for which a landing check succeeds
+static double GameScore = 0;
+static double BaseScore = 100;
 
 
 bool GameActive;
@@ -206,6 +208,7 @@ typedef struct lvlchar
     int yPos;
     int xPos;
     char ch = ' ';
+    double Score = 0;
 }lvlchar;
 
 typedef struct Level
@@ -216,6 +219,59 @@ typedef struct Level
     Level* Right = NULL;
     Level* Left = NULL;
 }Level;
+
+void InsertScores(Level* Lvl)
+{
+    int counter = 0;
+    
+    int wideness = 0;
+    double score = 0;
+    for(int i=0;i<ScreenLimitX - 1; i++)
+    {
+        if(Lvl->Layout[i].ch == '_')
+        {
+            //Check how wide the pad is, then use that to calculate score
+            while(Lvl->Layout[i + wideness].ch == '_')
+            {
+                wideness++;
+            }
+
+            if(wideness <= 3)
+            {
+                score = 10;
+            }
+            else if(wideness <= 8)
+            {
+                score = 9 - 2.132*(wideness/8);
+            }
+            else if(wideness <= 14)
+            {
+                score = 6 - 2.653*(wideness/14);
+            }
+            else if(wideness <= 20)
+            {
+                score = 2.2- 1.468*(wideness/20);
+            }
+            else if(wideness > 20)
+            {
+                score = 1;
+            }
+
+            if(score < 1)
+            {
+                score = 1;
+            }
+
+            //Assign score to the pad associated with the wideness
+            for(int j = 0; j < wideness; j++)
+            {
+                Lvl->Layout[i+j].Score = score;
+            }
+            i += wideness;
+            wideness = 0;
+        }
+    }
+}
 
 //The level generation algorithm. Generates a level at DrPt then stores it in Lvl
 //Drawer should point to bottom left of intended screen space before calling e.g (LINES - 1, 0) 
@@ -571,9 +627,9 @@ void resetLander(Lander* LnPt)
     return;
 }
 
-//The ultimate function that controls lander behavior.
+//The ultimate function that controls lander behavior. Calculates properties of LnPt when it interacts with level in Lvl
 //Checks for various properties and update the visuals. Also calls nessecary move functions.
-void updateLander(Lander* LnPt)
+void updateLander(Lander* LnPt, Level* Lvl)
 { 
     //Destruct check (see if lander has crashed)
     if(LnPt->IsDestroyed == true)
@@ -587,6 +643,7 @@ void updateLander(Lander* LnPt)
     //Functionally the same as destruct check, but I want features added to specifically the landed state later
     if(LnPt->IsLanded == true)
     {
+        GameScore += BaseScore*Lvl->Layout[LnPt->xPos].Score;
         GamePause();
         return;
     }
@@ -688,9 +745,10 @@ int main()
     D.xPos = 0;
 
     Level Level1;
-    Level* L1 = &Level1;
+    Level* CurrentLevel = &Level1;
 
-    GenerateLevel(DrPt, L1);
+    GenerateLevel(DrPt, CurrentLevel);
+    InsertScores(CurrentLevel);
 
     int userInput;
     int tick = 0;
@@ -712,6 +770,7 @@ int main()
         }
         mvprintw(0, COLS - 15, "Fuel: %d", LunarPt->fuel);
         mvprintw(0, COLS - 30, "yAccel: %0.2f", 10*LunarPt->yAccel);
+        mvprintw(0, COLS - 45, "Score: %0.0f", GameScore);
         mvprintw(1, COLS - 15, "Angle: %d", LunarPt->angleOffset);
         mvprintw(1, COLS - 30, "xAccel: %0.2f", 10*LunarPt->xAccel);
 
@@ -788,7 +847,7 @@ int main()
                 {
                     eraseLander(LunarPt);
                 }
-                DrawLevel(L1);
+                DrawLevel(CurrentLevel);
                 resetLander(LunarPt);
                 GameUnpause();
             }
@@ -797,7 +856,7 @@ int main()
         //Every-loop codes
         if(tick % 30480 == 0 && GameActive == true)
         {
-            updateLander(LunarPt);
+            updateLander(LunarPt, CurrentLevel);
         }
 
         refresh();
