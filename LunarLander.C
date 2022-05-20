@@ -8,23 +8,26 @@
 
 const int ScreenLimitY = 720;           //Arbitrary limit for screen space
 const int ScreenLimitX = 720;
-const int StartY = 4;                   //Start position of lander
+const int StartY = 4;                   //Start position of lander (carries into restarts)
 const int StartX = 8;
+const double StartYAccel = 0;           //Start acceleration value of lander (carries into restarts)
+const double StartXAccel = 0.6;           
 const int MaxLanderYDimension = 3;      //Max size of lander art. Has to be a square that encloses all characters
 const int MaxLanderXDimension = 5;
-const int rotationAmount = 30;
+const int rotationAmount = 15;          //Degrees rotated when the rotation keys are used
 const int explosionSize = 13;
 const int GravityCap = 3;               //Maximum gravity force (yAccel) that the lander can have. (actually just downward force in general, but you can't thrust downwards anyway so)
 const double gravAccel = 0.0320;        //Constant downward force
-const double airResistance = 0.005;     //Friction
+const double airResistance = 0.0008;     //Friction
 const double LandableYAccel = 1.2;       //Maximum y-accel value for which a landing check succeeds
 const double LandableXAccel = 4.0;        //Maximum x-accel value for which a landing check succeeds
-static double GameScore = 0;
-static double BaseScore = 100;
+static double GameScore = 0;            //Initial score
+static double BaseScore = 50;           //Score awarded on successful landing, before terrain difficulty modifiers
 
 
 bool GameActive;
 bool LanderPersist = false;             //If true, lander will remain on screen at landing spot after landing (and you can't land there again). Currently buggy :L
+bool LenientLanding = true;             //Allows lander to successfully land on only one '_' character instead of requiring all of them.
 
 //LANDER ARTS
 //Note: Thrust calculation is done at midpoint of bottom row. Landing check is done via at least one '_' character overlapping with at least one '_' character on the ground
@@ -83,6 +86,7 @@ double toRad(double theta)
     return (theta/180)*3.1415926535;
 }
 
+//Returns minumum of a and b
 int min(int a, int b)
 {
     if(a>b)
@@ -97,6 +101,16 @@ int min(int a, int b)
     {
         return a;
     }
+}
+
+//Sums a and b if they are not equal
+double SumIfDifferent(double a, double b)
+{
+    if(a == b)
+    {
+        return a;
+    }
+    else return a+b;
 }
 
 //Checks if position (y,x) is empty
@@ -415,6 +429,9 @@ void EraseExplosion(int y, int x, int size)
 
 
 
+
+
+
 //The player-controlled object.
 typedef struct Lander
 {
@@ -523,7 +540,8 @@ bool checkCollision(Lander* LnPt, int y, int x)
     return false;
 }
 
-//Special collision check, returns true if all '_' characters on lander overlaps with a '_' on the ground. Lander must have at least one '_' to succeed.
+//Special collision check, returns true if at all '_' character on lander overlaps with a '_' on the ground (If lenient landing is enabled, '_' may overlap with air provided at least one '_' is overlapping with ground). 
+//Lander must have at least one '_' to succeed.
 bool checkLandable(Lander* LnPt, int y, int x)
 {
     Drawer DrawHelper;
@@ -531,6 +549,7 @@ bool checkLandable(Lander* LnPt, int y, int x)
     DrawHelper.xPos = x - ((int) MaxLanderXDimension/2) - 1;
 
     bool HaveLandingGear = false;
+    bool AtLeastOneGearLanded = false;
 
     for(int i = 0; i<MaxLanderYDimension; i++)
     {
@@ -539,20 +558,27 @@ bool checkLandable(Lander* LnPt, int y, int x)
             if(LnPt->landerArt[i][j] == '_')
             {
                 HaveLandingGear = true;
-                if(mvinch(DrawHelper.yPos + i, DrawHelper.xPos + j) != '_')
+                if(mvinch(DrawHelper.yPos + i, DrawHelper.xPos + j) == '_' && AtLeastOneGearLanded == false)
                 {
-                    return false;
+                    AtLeastOneGearLanded = true;
                 }
 
                 if(LnPt->yAccel > LandableYAccel && LnPt->xAccel > LandableXAccel)
                 {
                     return false;
                 }
+
+                if(mvinch(DrawHelper.yPos + i, DrawHelper.xPos + j) != '_' && mvinch(DrawHelper.yPos + i, DrawHelper.xPos + j) != ' ')
+                {
+                    if(mvinch(DrawHelper.yPos + i, DrawHelper.xPos + j) != ' ' && LenientLanding == true)
+                    {}
+                    else return false;
+                }
             }
         }
     }
 
-    if(HaveLandingGear == false)
+    if(HaveLandingGear == false || AtLeastOneGearLanded == false)
     {
         return false;
     }
@@ -575,7 +601,7 @@ void rotateLander(Lander* LnPt, int angle)
     return;
 }
 
-//Sets (y,x) of Lander to given (y,x) and redraw it there. Automatically performs collision checks.
+//Sets (y,x) of Lander to given (y,x) and redraw it there. Flips collision boolean and returns if failed to move (obstruction in the way)
 void moveLander(Lander* LnPt, int y, int x)
 {   
     eraseLander(LnPt);
@@ -621,8 +647,8 @@ void resetLander(Lander* LnPt)
     LnPt->xPos = StartX;
     LnPt->yVelo = 0;
     LnPt->xVelo = 0;
-    LnPt->yAccel = 0;
-    LnPt->xAccel = 0;
+    LnPt->yAccel = StartYAccel;
+    LnPt->xAccel = StartXAccel;
     LnPt->angleOffset = 0;
 
     return;
@@ -644,7 +670,8 @@ void updateLander(Lander* LnPt, Level* Lvl)
     //Functionally the same as destruct check, but I want features added to specifically the landed state later
     if(LnPt->IsLanded == true)
     {
-        GameScore += BaseScore*Lvl->Layout[LnPt->xPos].Score;
+        GameScore += BaseScore*Lvl->Layout[LnPt->xPos - 2].Score + BaseScore*Lvl->Layout[LnPt->xPos + 2].Score;
+        mvprintw(LnPt->yPos - 5, LnPt->xPos, "+%0.0f" , BaseScore*Lvl->Layout[LnPt->xPos - 2].Score + BaseScore*Lvl->Layout[LnPt->xPos + 2].Score);
         GamePause();
         return;
     }
@@ -735,6 +762,8 @@ int main()
     Lander* LunarPt = &Lunar;
     Lunar.yPos = StartY;
     Lunar.xPos = StartX;
+    Lunar.yAccel = StartYAccel;
+    Lunar.xAccel = StartXAccel;
     Lunar.fuel = 500;
     Lunar.thrustPower = 0.025;
     Lunar.angleOffset = 0;
@@ -842,6 +871,12 @@ int main()
             }
             else if(userInput == 114)    //R Key
             {
+                int count = 0;       
+                while(mvinch(LunarPt->yPos - 5, LunarPt->xPos + count) != ' ')        //Erase the pop-up score
+                {
+                    mvaddch(LunarPt->yPos - 5, LunarPt->xPos + count, ' ');
+                    count++;
+                }
                 EraseContextPrintw();
                 EraseExplosion(LunarPt->yPos, LunarPt->xPos, explosionSize);
                 if(LanderPersist == false)
