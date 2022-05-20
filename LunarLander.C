@@ -12,7 +12,7 @@ const int StartY = 4;                   //Start position of lander
 const int StartX = 8;
 const int MaxLanderYDimension = 3;      //Max size of lander art. Has to be a square that encloses all characters
 const int MaxLanderXDimension = 5;
-const int rotationAmount = 45;
+const int rotationAmount = 30;
 const int explosionSize = 13;
 const int GravityCap = 3;               //Maximum gravity force (yAccel) that the lander can have. (actually just downward force in general, but you can't thrust downwards anyway so)
 const double gravAccel = 0.0320;        //Constant downward force
@@ -20,8 +20,9 @@ const double airResistance = 0.005;     //Friction
 const double LandableYAccel = 1.2;       //Maximum y-accel value for which a landing check succeeds
 const double LandableXAccel = 4.0;        //Maximum x-accel value for which a landing check succeeds
 
+
 bool GameActive;
-bool LanderPersist = false;             //If true, lander will remain on screen at landing spot after landing (and you can't land there again)
+bool LanderPersist = false;             //If true, lander will remain on screen at landing spot after landing (and you can't land there again). Currently buggy :L
 
 //LANDER ARTS
 //Note: Thrust calculation is done at midpoint of bottom row. Landing check is done via at least one '_' character overlapping with at least one '_' character on the ground
@@ -80,6 +81,22 @@ double toRad(double theta)
     return (theta/180)*3.1415926535;
 }
 
+int min(int a, int b)
+{
+    if(a>b)
+    {
+        return b;
+    }
+    else if(a<b)
+    {
+        return a;
+    }
+    else 
+    {
+        return a;
+    }
+}
+
 //Checks if position (y,x) is empty
 bool isEmpty(int y, int x)
 {
@@ -99,15 +116,35 @@ bool isEmpty(int y, int x)
     }
 }
 
+//Prints text at to left of screen space
+void ContextPrintw(const char* str)
+{
+    int length = strlen(str);
+    int allowedprintspace = COLS - 30;
+    for(int i = 0; i<min(length,allowedprintspace); i++)
+    {
+        mvaddch(0, i, str[i]);
+    }
+}
+
+void EraseContextPrintw()
+{
+    for(int i = 0; i<COLS - 30; i++)
+    {
+        mvaddch(0, i, ' ');
+    }
+}
+
 //Pauses the whole screen
 void GamePause()
 {
+    ContextPrintw("Game is paused. Press r to restart.");
     GameActive = false;
     nodelay(stdscr, false);
 }
 
 //Resumes the whole screen
-void GameResume()
+void GameUnpause()
 {
     GameActive = true;
     nodelay(stdscr, true);
@@ -358,7 +395,7 @@ void setLanderArt(Lander* LnPt, char LanderArt[MaxLanderYDimension][MaxLanderXDi
 
 void thrust(Lander* LnPt, double power)
 {
-    LnPt->yAccel += 1.2*power*-cos(toRad(LnPt->angleOffset));
+    LnPt->yAccel += power*-cos(toRad(LnPt->angleOffset));
     LnPt->xAccel += power*sin(toRad(LnPt->angleOffset));
 
     LnPt->fuel--;
@@ -433,26 +470,41 @@ bool checkCollision(Lander* LnPt, int y, int x)
     return false;
 }
 
-//Special collision check, returns true if '_' character on lander overlaps with a '_' on the ground
+//Special collision check, returns true if all '_' characters on lander overlaps with a '_' on the ground. Lander must have at least one '_' to succeed.
 bool checkLandable(Lander* LnPt, int y, int x)
 {
     Drawer DrawHelper;
     DrawHelper.yPos = y - MaxLanderYDimension - 1;
     DrawHelper.xPos = x - ((int) MaxLanderXDimension/2) - 1;
 
+    bool HaveLandingGear = false;
+
     for(int i = 0; i<MaxLanderYDimension; i++)
     {
         for(int j = 0; j<MaxLanderXDimension; j++)
         {            
-            if(mvinch(DrawHelper.yPos + i, DrawHelper.xPos + j) == 95 && LnPt->landerArt[i][j] == '_' && LnPt->yAccel < LandableYAccel && LnPt->xAccel < LandableXAccel)
+            if(LnPt->landerArt[i][j] == '_')
             {
-                return true;
+                HaveLandingGear = true;
+                if(mvinch(DrawHelper.yPos + i, DrawHelper.xPos + j) != '_')
+                {
+                    return false;
+                }
+
+                if(LnPt->yAccel > LandableYAccel && LnPt->xAccel > LandableXAccel)
+                {
+                    return false;
+                }
             }
-                
         }
     }
 
-    return false;
+    if(HaveLandingGear == false)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 //Changes the angle offset
@@ -470,14 +522,14 @@ void rotateLander(Lander* LnPt, int angle)
     return;
 }
 
-//Sets (y,x) of Lander to given (y,x) and redraw it there.
+//Sets (y,x) of Lander to given (y,x) and redraw it there. Automatically performs collision checks.
 void moveLander(Lander* LnPt, int y, int x)
 {   
     eraseLander(LnPt);
     if(checkCollision(LnPt, y, x) == true)
     {
         if(checkLandable(LnPt, y, x) == true)
-        {
+        {  
             LnPt->yPos = y;
             LnPt->xPos = x;
             drawLanderArt(LnPt);
@@ -511,7 +563,6 @@ void resetLander(Lander* LnPt)
 {  
     LnPt->IsDestroyed = false;
     LnPt->IsLanded = false;
-    nodelay(stdscr, true);
     
     LnPt->yPos = StartY;
     LnPt->xPos = StartX;
@@ -628,8 +679,8 @@ int main()
 
     Lander Lunar;
     Lander* LunarPt = &Lunar;
-    Lunar.yPos = 0 + MaxLanderYDimension;
-    Lunar.xPos = 5;
+    Lunar.yPos = StartY;
+    Lunar.xPos = StartX;
     Lunar.fuel = 500;
     Lunar.thrustPower = 0.025;
     Lunar.angleOffset = 0;
@@ -645,7 +696,6 @@ int main()
 
     GenerateLevel(DrPt, L1);
 
-    GameActive = true;
     int userInput;
     int tick = 0;
 
@@ -653,8 +703,8 @@ int main()
 
     raw();
     noecho();
-    nodelay(stdscr, true);
     curs_set(0);
+    GameUnpause();
 
     while(1)
     {
@@ -665,16 +715,18 @@ int main()
             mvprintw(1, i, " ");
         }
         mvprintw(0, COLS - 15, "Fuel: %d", LunarPt->fuel);
+        mvprintw(0, COLS - 30, "yAccel: %0.2f", 10*LunarPt->yAccel);
         mvprintw(1, COLS - 15, "Angle: %d", LunarPt->angleOffset);
+        mvprintw(1, COLS - 30, "xAccel: %0.2f", 10*LunarPt->xAccel);
 
         //DEBUG: Show speed & mover component on UI
-        for(int i = COLS - 30; i<COLS; i++)
-        {
-            mvprintw(2, i, " ");
-            mvprintw(3, i, " ");
-        }
-        mvprintw(2, COLS - 30, "yAccel: %0.3f yVelo: %0.3f", LunarPt->yAccel, LunarPt->yVelo);
-        mvprintw(3, COLS - 30, "xAccel: %0.3f xVelo: %0.3f", LunarPt->xAccel, LunarPt->xVelo);
+        // for(int i = COLS - 30; i<COLS; i++)
+        // {
+        //     mvprintw(2, i, " ");
+        //     mvprintw(3, i, " ");
+        // }
+        // mvprintw(2, COLS - 15, "yVelo: %0.3f", LunarPt->yVelo);
+        // mvprintw(3, COLS - 15, "xVelo: %0.3f", LunarPt->xVelo);
 
         //Button Presses Codes, divided into active (unpaused) and inactive (paused) state
         userInput = getch();
@@ -691,7 +743,7 @@ int main()
             }
             else if(userInput == 32)    //Spacebar Key
             {
-
+                ContextPrintw("Test");
             }
             else if(userInput == 119)    //W Key
             {
@@ -712,7 +764,7 @@ int main()
             {
                 rotateLander(LunarPt, rotationAmount);
             }
-            else if(userInput == 82)    //R Key
+            else if(userInput == 114)    //R Key
             {
                 
             }
@@ -721,7 +773,7 @@ int main()
         {
             if(userInput == 10)         //Enter Key
             {
-                DrawLevel(L1);
+
             }
             else if(userInput == 27)    //Escape key
             {
@@ -730,13 +782,19 @@ int main()
             }
             else if(userInput == 32)    //Spacebar Key
             {
-                EraseExplosion(LunarPt->yPos, LunarPt->xPos, explosionSize);
-                resetLander(LunarPt);
-                GameResume();
+
             }
-            else if(userInput == 82)    //R Key
+            else if(userInput == 114)    //R Key
             {
-                
+                EraseContextPrintw();
+                EraseExplosion(LunarPt->yPos, LunarPt->xPos, explosionSize);
+                if(LanderPersist == false)
+                {
+                    eraseLander(LunarPt);
+                }
+                DrawLevel(L1);
+                resetLander(LunarPt);
+                GameUnpause();
             }
         }
 
