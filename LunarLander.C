@@ -15,7 +15,7 @@ const double StartXAccel = 0.6;
 const int MaxLanderYDimension = 3;      //Max size of lander art. Has to be a square that encloses all characters
 const int MaxLanderXDimension = 5;
 const int rotationAmount = 15;          //Degrees rotated when the rotation keys are used
-const int explosionSize = 13;
+const int explosionSize = 8;
 const int GravityCap = 3;               //Maximum gravity force (yAccel) that the lander can have. (actually just downward force in general, but you can't thrust downwards anyway so)
 const double gravAccel = 0.0320;        //Constant downward force
 const double airResistance = 0.0008;     //Friction
@@ -134,10 +134,10 @@ bool isEmpty(int y, int x)
 
 
 //Prints text at to left of screen space
-void ContextPrintw(const char* str)
+void ContextPrintw(const char* str, ...)
 {
     int length = strlen(str);
-    int allowedprintspace = COLS - 30;
+    int allowedprintspace = COLS - 45;
     for(int i = 0; i<min(length,allowedprintspace); i++)
     {
         mvaddch(0, i, str[i]);
@@ -146,7 +146,7 @@ void ContextPrintw(const char* str)
 
 void EraseContextPrintw()
 {
-    for(int i = 0; i<COLS - 30; i++)
+    for(int i = 0; i<COLS - 45; i++)
     {
         mvaddch(0, i, ' ');
     }
@@ -515,6 +515,11 @@ void eraseLander(Lander* LnPt)
 //Checks collision by checking if drawing lander at (y,x) would result in conflict
 bool checkCollision(Lander* LnPt, int y, int x)
 {
+    if(LnPt->yPos < 2 + MaxLanderYDimension + 1)          //Prevent collision with UI elements by disabling collision.
+    {
+        return false;
+    }
+    
     Drawer DrawHelper;
     DrawHelper.yPos = y - MaxLanderYDimension - 1;
     DrawHelper.xPos = x - ((int) MaxLanderXDimension/2) - 1;
@@ -804,6 +809,27 @@ int main()
         mvprintw(1, COLS - 15, "Angle: %d", LunarPt->angleOffset);
         mvprintw(1, COLS - 30, "xAccel: %0.2f", 10*LunarPt->xAccel);
 
+        if(GameActive == false)
+        {
+            if(LunarPt->IsDestroyed == true)
+            {
+                EraseContextPrintw();
+                ContextPrintw("You crashed. Press r to restart");
+            }
+
+            if(LunarPt->IsLanded == true)
+            {
+                EraseContextPrintw();
+                ContextPrintw("Successful Landing!");
+            }
+
+            if(LunarPt->fuel <= 0)
+            {
+                EraseContextPrintw();
+                ContextPrintw("You ran out of fuel. Press esc to exit");
+            }
+        }
+
         //DEBUG: Show speed & mover component on UI
         // for(int i = COLS - 30; i<COLS; i++)
         // {
@@ -828,7 +854,7 @@ int main()
             }
             else if(userInput == 32)    //Spacebar Key
             {
-                ContextPrintw("Test");
+
             }
             else if(userInput == 119)    //W Key
             {
@@ -871,21 +897,24 @@ int main()
             }
             else if(userInput == 114)    //R Key
             {
-                int count = 0;       
-                while(mvinch(LunarPt->yPos - 5, LunarPt->xPos + count) != ' ')        //Erase the pop-up score
+                if(Lunar.fuel > 0)
                 {
-                    mvaddch(LunarPt->yPos - 5, LunarPt->xPos + count, ' ');
-                    count++;
+                    int count = 0;       
+                    while(mvinch(LunarPt->yPos - 5, LunarPt->xPos + count) != ' ')        //Erase the pop-up score
+                    {
+                        mvaddch(LunarPt->yPos - 5, LunarPt->xPos + count, ' ');
+                        count++;
+                    }
+                    EraseContextPrintw();
+                    EraseExplosion(LunarPt->yPos, LunarPt->xPos, explosionSize);
+                    if(LanderPersist == false)
+                    {
+                        eraseLander(LunarPt);
+                    }
+                    DrawLevel(CurrentLevel);
+                    resetLander(LunarPt);
+                    GameUnpause();                    
                 }
-                EraseContextPrintw();
-                EraseExplosion(LunarPt->yPos, LunarPt->xPos, explosionSize);
-                if(LanderPersist == false)
-                {
-                    eraseLander(LunarPt);
-                }
-                DrawLevel(CurrentLevel);
-                resetLander(LunarPt);
-                GameUnpause();
             }
         }
 
@@ -899,5 +928,6 @@ int main()
         tick++;
     }
 
+    printf("Final Score: %0.0f\n", GameScore);
     return 0;
 }
