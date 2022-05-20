@@ -201,21 +201,28 @@ void drawDownSlope(Drawer* DrPt)
     DrPt->xPos++;
 }
 
+typedef struct lvlchar
+{
+    int yPos;
+    int xPos;
+    char ch = ' ';
+}lvlchar;
+
 typedef struct Level
 {
     int StartYPos;
     int StartXPos;
-    char Layout[ScreenLimitX];
+    lvlchar Layout[ScreenLimitX];
     Level* Right = NULL;
     Level* Left = NULL;
 }Level;
 
-//The level generation algorithm. Generates a level at DrPt then stores it in BaseLvl
+//The level generation algorithm. Generates a level at DrPt then stores it in Lvl
 //Drawer should point to bottom left of intended screen space before calling e.g (LINES - 1, 0) 
-void GenerateLevel(Drawer* DrPt, Level* BaseLvl)
+void GenerateLevel(Drawer* DrPt, Level* Lvl)
 { 
-    BaseLvl->StartYPos = DrPt->yPos;
-    BaseLvl->StartXPos = DrPt->xPos;
+    Lvl->StartYPos = DrPt->yPos;
+    Lvl->StartXPos = DrPt->xPos;
     
     int ranA = rand() % 18;         //Used to draw ground
     int ranB = rand() % 10 - 5;     //Used to draw slopes
@@ -225,7 +232,9 @@ void GenerateLevel(Drawer* DrPt, Level* BaseLvl)
         if(ranA > 0)
         {
             drawGround(DrPt);
-            BaseLvl->Layout[counter] = '_';
+            Lvl->Layout[counter].ch = '_';
+            Lvl->Layout[counter].yPos = DrPt->yPos;
+            Lvl->Layout[counter].xPos = DrPt->xPos - 1;
             counter++;
             ranA--;
         }
@@ -234,14 +243,18 @@ void GenerateLevel(Drawer* DrPt, Level* BaseLvl)
             if(ranB > 0 && DrPt->yPos > 5)
             {
                 drawUpSlope(DrPt);
-                BaseLvl->Layout[counter] = '/';
+                Lvl->Layout[counter].ch = '/';
+                Lvl->Layout[counter].yPos = DrPt->yPos + 1;
+                Lvl->Layout[counter].xPos = DrPt->xPos - 1;
                 counter++;
                 ranB--;
             }
             else if(ranB < 0 && DrPt->yPos < LINES - 1)
             {
                 drawDownSlope(DrPt);
-                BaseLvl->Layout[counter] = '\\';
+                Lvl->Layout[counter].ch = '\\';
+                Lvl->Layout[counter].yPos = DrPt->yPos;
+                Lvl->Layout[counter].xPos = DrPt->xPos - 1;
                 counter++;
                 ranB++;
                 ranB++;
@@ -267,24 +280,7 @@ void DrawLevel(Level* Lvl)
 
     while(counter < ScreenLimitX - 1)
     {
-        if(Lvl->Layout[counter] == '_')
-        {
-            mvaddch(DrawerHelper.yPos, DrawerHelper.xPos, Lvl->Layout[counter]);
-            DrawerHelper.xPos++;
-        }
-        else if(Lvl->Layout[counter] == '/')
-        {
-            mvaddch(DrawerHelper.yPos, DrawerHelper.xPos, Lvl->Layout[counter]);
-            DrawerHelper.yPos--;
-            DrawerHelper.xPos++;
-        }
-        else if(Lvl->Layout[counter] == '\\')
-        {
-            DrawerHelper.yPos++;
-            mvaddch(DrawerHelper.yPos, DrawerHelper.xPos, Lvl->Layout[counter]);
-            DrawerHelper.xPos++;
-        }
-
+        mvaddch(Lvl->Layout[counter].yPos, Lvl->Layout[counter].xPos, Lvl->Layout[counter].ch);
         counter++;
     }
 }
@@ -691,8 +687,8 @@ int main()
     D.yPos = LINES - 1;
     D.xPos = 0;
 
-    Level Lvl1;
-    Level* L1 = &Lvl1;
+    Level Level1;
+    Level* L1 = &Level1;
 
     GenerateLevel(DrPt, L1);
 
