@@ -118,6 +118,7 @@ bool isEmpty(int y, int x)
     }
 }
 
+
 //Prints text at to left of screen space
 void ContextPrintw(const char* str)
 {
@@ -236,11 +237,11 @@ void InsertScores(Level* Lvl)
                 wideness++;
             }
 
-            if(wideness <= 3)
+            if(wideness <= 5)
             {
                 score = 10;
             }
-            else if(wideness <= 8)
+            else if(wideness <= 10)
             {
                 score = 9 - 2.132*(wideness/8);
             }
