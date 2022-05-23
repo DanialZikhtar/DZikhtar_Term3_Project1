@@ -14,11 +14,11 @@ const double StartYAccel = 0;           //Start acceleration value of lander (ca
 const double StartXAccel = 0.6;           
 const int MaxLanderYDimension = 3;      //Max size of lander art. Has to be a square that encloses all characters
 const int MaxLanderXDimension = 5;
-const int rotationAmount = 15;          //Degrees rotated when the rotation keys are used
+const int rotationAmount = 30;          //Degrees rotated when the rotation keys are used
 const int explosionSize = 8;
 const int GravityCap = 3;               //Maximum gravity force (yAccel) that the lander can have. (actually just downward force in general, but you can't thrust downwards anyway so)
 const double gravAccel = 0.0320;        //Constant downward force
-const double airResistance = 0.0008;     //Friction
+const double airResistance = 0.0007;     //Friction
 const double LandableYAccel = 1.2;       //Maximum y-accel value for which a landing check succeeds
 const double LandableXAccel = 4.0;        //Maximum x-accel value for which a landing check succeeds
 static double GameScore = 0;            //Initial score
@@ -27,7 +27,7 @@ static double BaseScore = 50;           //Score awarded on successful landing, b
 
 bool GameActive;
 bool LanderPersist = false;             //If true, lander will remain on screen at landing spot after landing (and you can't land there again). Currently buggy :L
-bool LenientLanding = true;             //Allows lander to successfully land on only one '_' character instead of requiring all of them.
+bool LenientLanding = false;             //Allows lander to successfully land on only one '_' character instead of requiring all of them.
 
 //LANDER ARTS
 //Note: Thrust calculation is done at midpoint of bottom row. Landing check is done via at least one '_' character overlapping with at least one '_' character on the ground
@@ -235,6 +235,7 @@ typedef struct Level
     Level* Left = NULL;
 }Level;
 
+//Calculates scores for a Lvl then inserts it to its lvlchar
 void InsertScores(Level* Lvl)
 {
     int counter = 0;
@@ -251,6 +252,7 @@ void InsertScores(Level* Lvl)
                 wideness++;
             }
 
+            //Formula for calculating scores. Favours narrow terrain for higher scores (<20 chars)
             if(wideness <= 5)
             {
                 score = 10;
@@ -341,6 +343,8 @@ void GenerateLevel(Drawer* DrPt, Level* Lvl)
     return;
 }
 
+
+//Draws a level data based on generated Lvl
 void DrawLevel(Level* Lvl)
 {
     int counter = 0;
@@ -396,6 +400,7 @@ void DrawExplosion(int y, int x, int size)
     return;
 }
 
+//Erase the explosion called by DrawExplosion
 void EraseExplosion(int y, int x, int size)
 {
     Drawer DrawHelper;
@@ -452,6 +457,7 @@ typedef struct Lander
     char landerArt[MaxLanderYDimension][MaxLanderXDimension];
 } Lander;
 
+//Sets the current Lander Art to match a new one. List of art can be found at line 34
 void setLanderArt(Lander* LnPt, char LanderArt[MaxLanderYDimension][MaxLanderXDimension])
 {
     for (int i = 0; i < MaxLanderYDimension; i++)
@@ -495,6 +501,7 @@ void drawLanderArt(Lander* LnPt)
     return;
 }
 
+//Erase lander at current position
 void eraseLander(Lander* LnPt)
 {
     Drawer DrawHelper;
@@ -515,7 +522,7 @@ void eraseLander(Lander* LnPt)
 //Checks collision by checking if drawing lander at (y,x) would result in conflict
 bool checkCollision(Lander* LnPt, int y, int x)
 {
-    if(LnPt->yPos < 2 + MaxLanderYDimension + 1)          //Prevent collision with UI elements by disabling collision.
+    if(LnPt->yPos < 3 + MaxLanderYDimension + 1)          //Prevent collision with UI elements by disabling collision.
     {
         return false;
     }
@@ -745,6 +752,12 @@ void updateLander(Lander* LnPt, Level* Lvl)
         setLanderArt(LnPt, LANDER_UPRIGHT);
     }
 
+    //Hasty off-screen check
+    if(LnPt->xPos > COLS || LnPt->xPos < 0)
+    {
+        resetLander(LnPt);
+    }
+
     //Velocity checks
     mover(LnPt);
 }
@@ -771,7 +784,7 @@ int main()
     Lunar.xAccel = StartXAccel;
     Lunar.fuel = 500;
     Lunar.thrustPower = 0.025;
-    Lunar.angleOffset = 0;
+    Lunar.angleOffset = 90;
     setLanderArt(LunarPt, LANDER_UPRIGHT);
 
     Drawer D;
@@ -870,7 +883,7 @@ int main()
             }
             else if(userInput == 115)    //S Key
             {
-                moveLander(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
+
             }
             else if(userInput == 100)    //D Key
             {
@@ -889,7 +902,7 @@ int main()
             }
             else if(userInput == 258)    //Down arrow key
             {
-                moveLander(LunarPt, LunarPt->yPos + 1, LunarPt->xPos);
+
             }
             else if(userInput == 261)    //Right arrow key
             {
